@@ -5,7 +5,7 @@
 
 int main(void)
 {
-    GLFWwindow* window;
+    GLFWwindow* window; //pointer
 
     /* Initialize the library */
     if (!glfwInit())

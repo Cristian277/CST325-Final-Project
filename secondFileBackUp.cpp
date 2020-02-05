@@ -1,8 +1,3 @@
-#include <iostream>
-#define GLEW_STATIC
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
-
 GLFWwindow* initialize_glfw() {
 	// Initialize the context
 	if (!glfwInit()) {
@@ -32,6 +27,7 @@ GLFWwindow* initialize_glfw() {
 
 	return window;
 }
+
 
 GLuint compile_shader() {
 	// Define shader sourcecode
@@ -101,6 +97,11 @@ GLuint compile_shader() {
 	return shader_program;
 }
 
+
+// TODO: implement later
+
+
+
 void load_geometry(GLuint* vao, GLuint* vbo, GLsizei* vertex_count) {
 	// Send the vertex data to the GPU
 	{
@@ -139,6 +140,11 @@ void load_geometry(GLuint* vao, GLuint* vbo, GLsizei* vertex_count) {
 	}
 }
 
+
+
+// TODO: implement later
+
+
 void render_scene(GLFWwindow* window, GLsizei vertex_count) {
 	// Set the clear color
 	glClearColor(0.7f, 0.0f, 0.5f, 1.0f);
@@ -154,26 +160,25 @@ void render_scene(GLFWwindow* window, GLsizei vertex_count) {
 }
 
 
+
 void cleanup(GLFWwindow* window) {
 	// Call glfw terminate here
-	glfwTerminate;
-	
+	glfwTerminate();
+	glDeleteVertexArrays(1, &vao);
+	glDeleteBuffers(1, &vbo);
+
 }
 
 int main(void) {
-
-	GLuint vao, vbo;
-	GLsizei vertex_count;
 	GLFWwindow* window = initialize_glfw();
-
 	compile_shader();
-	load_geometry(&vao,&vbo,&vertex_count);
+	load_geometry();
 
 	while (!glfwWindowShouldClose(window)) {
-		render_scene(window, vertex_count);
+		render_scene(window);
 		glfwPollEvents();
 	}
 
-	cleanup(window);
+	cleanup();
 	return 0;
 }

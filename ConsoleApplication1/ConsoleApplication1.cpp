@@ -5,7 +5,7 @@
 
 GLFWwindow* initialize_glfw() {
 	// Initialize the context
-	if (!glfwInit()) {
+	if (!glfwInit()) { //cancels the application if it can not open the window
 		std::cout << "glfwInit(...) failed\n";
 		abort();
 	}
@@ -16,7 +16,7 @@ GLFWwindow* initialize_glfw() {
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	// Create the window
-	GLFWwindow* window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL); //setting the window pointer to be width 640, height 480, and title hello world
 	if (!window) {
 		std::cout << "glfwCreateWindow(...) failed\n";
 		glfwTerminate();
@@ -27,20 +27,25 @@ GLFWwindow* initialize_glfw() {
 	glfwMakeContextCurrent(window);
 
 	// Load the function pointers
-	glewExperimental = GL_TRUE;
+	glewExperimental = GL_TRUE; 
 	glewInit();
 
-	return window;
+	return window; //returns window pointer type glfwwindow
 }
 
-GLuint compile_shader() {
+GLuint compile_shader() { //function type unsigned int can only be positive
 	// Define shader sourcecode
-	const char* vertex_shader_src =
+	//declaring constant char pointer named vertext_shader_src that equals a string 
+	//we are creating two shaders the vertex_shader and the fragment shader
+	//vertex is working with the vertices and the fragment shader takes care of the color
+	//after we create them we link them into one shader program 
+	const char* vertex_shader_src = 
 		"#version 330 core\n"
 		"layout (location = 0) in vec3 pos;\n"
 		"void main() {\n"
 		"   gl_Position = vec4(pos.x, pos.y, pos.z, 1.0);\n"
 		"}\n";
+
 	const char* fragment_shader_src =
 		"#version 330 core\n"
 		"out vec4 FragColor;\n"
@@ -49,13 +54,13 @@ GLuint compile_shader() {
 		"}\n";
 
 	// Define some vars
-	const int MAX_ERROR_LEN = 512;
+	const int MAX_ERROR_LEN = 512; //making this sort of like a size for the infoLog array below 
 	GLint success;
 	GLchar infoLog[MAX_ERROR_LEN];
 
 	// Compile the vertex shader
 	GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(vertex_shader, 1, &vertex_shader_src, NULL);
+	glShaderSource(vertex_shader, 1, &vertex_shader_src, NULL); //passing in vertex shader src we made earlier
 	glCompileShader(vertex_shader);
 
 	// Check for errors
@@ -67,9 +72,9 @@ GLuint compile_shader() {
 	}
 
 	// Compile the fragment shader
-	GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+	GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER); 
 	glShaderSource(fragment_shader, 1, &fragment_shader_src, NULL);
-	glCompileShader(fragment_shader);
+	glCompileShader(fragment_shader); 
 
 	// Check for errors
 	glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);
@@ -80,8 +85,8 @@ GLuint compile_shader() {
 	}
 
 	// Link the shaders
-	GLuint shader_program = glCreateProgram();
-	glAttachShader(shader_program, vertex_shader);
+	GLuint shader_program = glCreateProgram();//sets shader program set to empty program object
+	glAttachShader(shader_program, vertex_shader); //pass in a program (our shader_program),and vertex shader 
 	glAttachShader(shader_program, fragment_shader);
 	glLinkProgram(shader_program);
 
@@ -92,14 +97,18 @@ GLuint compile_shader() {
 		std::cout << "shader linker failed:\n" << infoLog << std::endl;
 		abort();
 	}
-	glDeleteShader(vertex_shader);
+	glDeleteShader(vertex_shader); //deletes vertex and fragment shaders 
 	glDeleteShader(fragment_shader);
 
-	// Enable the shader here since we only have one
+	// Enable the shader program here since we only have one
 	glUseProgram(shader_program);
 
 	return shader_program;
 }
+
+
+
+
 
 void load_geometry(GLuint* vao, GLuint* vbo, GLsizei* vertex_count) {
 	// Send the vertex data to the GPU
@@ -107,8 +116,15 @@ void load_geometry(GLuint* vao, GLuint* vbo, GLsizei* vertex_count) {
 		// Generate the data on the CPU
 		GLfloat vertices[] = {
 			0.0f, 0.5f, 0.0f, // top center
-			0.5f, -0.5f, 0.0f, // bottom right
-			-0.5f, -0.5f, 0.0f, // bottom left
+			0.0f, 0.0f, 0.0f, // bottom right
+			0.5f, 0.0f, 0.0f, // bottom left
+
+			0.0f, 0.5f, 0.0f, // top center
+			0.5, 0.5f, 0.0f, // bottom right
+			0.5f, 0.0f, 0.0f, // bottom left
+			
+			
+
 		};
 		*vertex_count = sizeof(vertices) / sizeof(vertices[0]);
 
@@ -139,6 +155,7 @@ void load_geometry(GLuint* vao, GLuint* vbo, GLsizei* vertex_count) {
 	}
 }
 
+
 void render_scene(GLFWwindow* window, GLsizei vertex_count) {
 	// Set the clear color
 	glClearColor(0.7f, 0.0f, 0.5f, 1.0f);
@@ -147,33 +164,37 @@ void render_scene(GLFWwindow* window, GLsizei vertex_count) {
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	// Draw the current vao/vbo, with the current shader
-	glDrawArrays(GL_TRIANGLES, 0, vertex_count);
+	glDrawArrays(GL_TRIANGLES,0,vertex_count);
 
 	// Display the results on screen
 	glfwSwapBuffers(window);
 }
 
 
-void cleanup(GLFWwindow* window) {
+void cleanup(GLFWwindow* window) {//takes in window pointer into the argument
 	// Call glfw terminate here
-	glfwTerminate;
+	glfwTerminate; //this terminates the glfw library after we are done
 	
 }
 
 int main(void) {
 
-	GLuint vao, vbo;
-	GLsizei vertex_count;
-	GLFWwindow* window = initialize_glfw();
+	GLuint vao, vbo; //unsigned int that can only be positive and we are creating a vertex array object and vertex buffer object
+	GLsizei vertex_count;  //an int used for size 
+	GLFWwindow* window = initialize_glfw(); //a pointer object for window that equals the glfw function
 
-	compile_shader();
-	load_geometry(&vao,&vbo,&vertex_count);
+	//these are all uninitialized at thr start but when they are passed into the function then 
+	//the values are changed because they are by reference into the functions above.
+
+	compile_shader(); //calls compile_shader
+	load_geometry(&vao,&vbo,&vertex_count); //calls load geometry and we pass in vao,vbo,and vertex_count by reference
 
 	while (!glfwWindowShouldClose(window)) {
-		render_scene(window, vertex_count);
+		render_scene(window, vertex_count);//calls render scene and passes in window pointer and vertex count
 		glfwPollEvents();
 	}
 
 	cleanup(window);
+
 	return 0;
 }

@@ -39,18 +39,37 @@ GLuint compile_shader() { //function type unsigned int can only be positive
 	//we are creating two shaders the vertex_shader and the fragment shader
 	//vertex is working with the vertices and the fragment shader takes care of the color
 	//after we create them we link them into one shader program 
+	
+	//we declare the uniforms inside the src string and then change them in the render scene
+	//by returning the uniform and saving it into a variable and changing the values we could also
+	//use loops to change position or color by going from 0.0-1.0f
+	//if you name something "offset" in the source then we pass it in as an argument later on 
+
 	const char* vertex_shader_src = 
 		"#version 330 core\n"
 		"layout (location = 0) in vec3 pos;\n"
+		//"layout (location = 1) in vec2 texcoords;\n"
+		//"out vec2 Texcoords;\n"
+		//"in vec2 Texcoords;\n"
+		//"uniform vec4 color;\n"
+		//
+
+		"uniform vec2 offset;\n"
+
 		"void main() {\n"
-		"   gl_Position = vec4(pos.x, pos.y, pos.z, 1.0);\n"
+		"   gl_Position = vec4(pos.x + offset.x, pos.y + offset.y, pos.z, 1.0);\n"
 		"}\n";
 
 	const char* fragment_shader_src =
 		"#version 330 core\n"
 		"out vec4 FragColor;\n"
-		"void main() {\n"
-		"   FragColor = vec4(0.0f, 0.0f, 1.0f, 1.0f);\n"
+		"uniform vec4 color;\n"
+		//"uniform sampler2Dtex;\n"
+		//"
+
+		"void main() {\n" //color is the name of the vec 4 (r,g,b,a)
+		//"vec2uvs = vec2(gl_FragCoord)/100.00;\n"
+		"   FragColor = color;\n"
 		"}\n";
 
 	// Define some vars
@@ -60,6 +79,7 @@ GLuint compile_shader() { //function type unsigned int can only be positive
 
 	// Compile the vertex shader
 	GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+
 	glShaderSource(vertex_shader, 1, &vertex_shader_src, NULL); //passing in vertex shader src we made earlier
 	glCompileShader(vertex_shader);
 
@@ -107,9 +127,6 @@ GLuint compile_shader() { //function type unsigned int can only be positive
 }
 
 
-
-
-
 void load_geometry(GLuint* vao, GLuint* vbo, GLsizei* vertex_count) {
 	// Send the vertex data to the GPU
 	{
@@ -119,12 +136,11 @@ void load_geometry(GLuint* vao, GLuint* vbo, GLsizei* vertex_count) {
 			0.0f, 0.0f, 0.0f, // bottom right
 			0.5f, 0.0f, 0.0f, // bottom left
 
+			/*
 			0.0f, 0.5f, 0.0f, // top center
 			0.5, 0.5f, 0.0f, // bottom right
 			0.5f, 0.0f, 0.0f, // bottom left
-			
-			
-
+			*/
 		};
 		*vertex_count = sizeof(vertices) / sizeof(vertices[0]);
 
@@ -155,33 +171,72 @@ void load_geometry(GLuint* vao, GLuint* vbo, GLsizei* vertex_count) {
 	}
 }
 
+//we could use the uniforms here to create the offset while still using the same triangle
+//template 
 
-void render_scene(GLFWwindow* window, GLsizei vertex_count) {
-	// Set the clear color
+void render_scene(GLFWwindow* window, GLsizei vertex_count, GLuint shader_program) {
+
+	static float red = 0.0f;
+	static float dir = 1.0f;
+
+	static float incrementer = 0.0f;
+	static float dir2 = 1.0;
+
+
 	glClearColor(0.7f, 0.0f, 0.5f, 1.0f);
 
-	// Clear the screen
 	glClear(GL_COLOR_BUFFER_BIT);
+	
+	if (dir > 0.0) {
+		red += 0.001f;
+		if (red > 1.0) {
+			dir = -1.0;
+		}
+	}
+		else {
+			red -= 0.001f;
+		}if (red < 0.0) {
+			dir = 1.0;
+		}
 
-	// Draw the current vao/vbo, with the current shader
-	glDrawArrays(GL_TRIANGLES,0,vertex_count);
+	GLint color_location = glGetUniformLocation(shader_program, "color");
+	GLint offset_location = glGetUniformLocation(shader_program, "offset");
+	GLint texture_location = glGetUniformLocation(shader_program, "sampler2Dtex");
+
+	glUniform4f(color_location, red, 0.0, 0.0, 1.0); //red, green, blue
+	glUniform2f(offset_location, red, 0.5); //x and y coordinates
+	glDrawArrays(GL_TRIANGLES, 0, vertex_count);
+
+	glUniform4f(color_location, 0.0, 0.0, red, 1.0); //blue triangle
+	glUniform2f(offset_location, incrementer, red);
+	glDrawArrays(GL_TRIANGLES, 0, vertex_count);
+	
 
 	// Display the results on screen
 	glfwSwapBuffers(window);
-}
 
+}
 
 void cleanup(GLFWwindow* window) {//takes in window pointer into the argument
 	// Call glfw terminate here
-	glfwTerminate; //this terminates the glfw library after we are done
+	glfwTerminate(); //this terminates the glfw library after we are done
 	
 }
 
 int main(void) {
 
+	//initialize and empty shader program in the main the set it 
+	//have to get the shader program by doing GLuint shade_program =shade_compiler();
+	//pass this shade program into the render scene in the loop 
+	//this is the exact shade_program that we created in the function
+	//also create argument in the render scene function for shader_program so
+	//render_scene(window,vertex_count,shader_program)
+	 //sets shader_program to the return of compile_shader()
+	 
 	GLuint vao, vbo; //unsigned int that can only be positive and we are creating a vertex array object and vertex buffer object
 	GLsizei vertex_count;  //an int used for size 
 	GLFWwindow* window = initialize_glfw(); //a pointer object for window that equals the glfw function
+	GLuint shader_program = compile_shader();
 
 	//these are all uninitialized at thr start but when they are passed into the function then 
 	//the values are changed because they are by reference into the functions above.
@@ -189,8 +244,8 @@ int main(void) {
 	compile_shader(); //calls compile_shader
 	load_geometry(&vao,&vbo,&vertex_count); //calls load geometry and we pass in vao,vbo,and vertex_count by reference
 
-	while (!glfwWindowShouldClose(window)) {
-		render_scene(window, vertex_count);//calls render scene and passes in window pointer and vertex count
+	while (!glfwWindowShouldClose(window)){
+		render_scene(window, vertex_count,shader_program);//calls render scene and passes in window pointer and vertex count
 		glfwPollEvents();
 	}
 

@@ -33,6 +33,7 @@ GLFWwindow* initialize_glfw() {
 	return window; //returns window pointer type glfwwindow
 }
 
+
 GLuint compile_shader() { //function type unsigned int can only be positive
 	// Define shader sourcecode
 	//declaring constant char pointer named vertext_shader_src that equals a string 
@@ -53,6 +54,7 @@ GLuint compile_shader() { //function type unsigned int can only be positive
 		//"in vec2 Texcoords;\n"
 		//"uniform vec4 color;\n"
 		//
+
 
 		"uniform vec2 offset;\n"
 
@@ -132,9 +134,9 @@ void load_geometry(GLuint* vao, GLuint* vbo, GLsizei* vertex_count) {
 	{
 		// Generate the data on the CPU
 		GLfloat vertices[] = {
-			0.0f, 0.5f, 0.0f, // top center
+			0.0f, 0.05f, 0.0f, // top center
 			0.0f, 0.0f, 0.0f, // bottom right
-			0.5f, 0.0f, 0.0f, // bottom left
+			0.05f, 0.0f, 0.0f, // bottom left
 
 			/*
 			0.0f, 0.5f, 0.0f, // top center
@@ -182,7 +184,6 @@ void render_scene(GLFWwindow* window, GLsizei vertex_count, GLuint shader_progra
 	static float incrementer = 0.0f;
 	static float dir2 = 1.0;
 
-
 	glClearColor(0.7f, 0.0f, 0.5f, 1.0f);
 
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -195,22 +196,25 @@ void render_scene(GLFWwindow* window, GLsizei vertex_count, GLuint shader_progra
 	}
 		else {
 			red -= 0.001f;
-		}if (red < 0.0) {
+		}
+		if (red < 0.0) {
 			dir = 1.0;
 		}
 
 	GLint color_location = glGetUniformLocation(shader_program, "color");
 	GLint offset_location = glGetUniformLocation(shader_program, "offset");
-	GLint texture_location = glGetUniformLocation(shader_program, "sampler2Dtex");
+	//GLint texture_location = glGetUniformLocation(shader_program, "sampler2Dtex");
 
 	glUniform4f(color_location, red, 0.0, 0.0, 1.0); //red, green, blue
-	glUniform2f(offset_location, red, 0.5); //x and y coordinates
+	glUniform2f(offset_location, red, red); //x and y coordinates
 	glDrawArrays(GL_TRIANGLES, 0, vertex_count);
 
 	glUniform4f(color_location, 0.0, 0.0, red, 1.0); //blue triangle
-	glUniform2f(offset_location, incrementer, red);
+	glUniform2f(offset_location, -0.5,red);
 	glDrawArrays(GL_TRIANGLES, 0, vertex_count);
+
 	
+
 
 	// Display the results on screen
 	glfwSwapBuffers(window);

@@ -3,6 +3,7 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
+
 GLFWwindow* initialize_glfw() {
 	// Initialize the context
 	if (!glfwInit()) { //cancels the application if it can not open the window
@@ -27,7 +28,7 @@ GLFWwindow* initialize_glfw() {
 	glfwMakeContextCurrent(window);
 
 	// Load the function pointers
-	glewExperimental = GL_TRUE; 
+	glewExperimental = GL_TRUE;
 	glewInit();
 
 	return window; //returns window pointer type glfwwindow
@@ -40,13 +41,13 @@ GLuint compile_shader() { //function type unsigned int can only be positive
 	//we are creating two shaders the vertex_shader and the fragment shader
 	//vertex is working with the vertices and the fragment shader takes care of the color
 	//after we create them we link them into one shader program 
-	
+
 	//we declare the uniforms inside the src string and then change them in the render scene
 	//by returning the uniform and saving it into a variable and changing the values we could also
 	//use loops to change position or color by going from 0.0-1.0f
 	//if you name something "offset" in the source then we pass it in as an argument later on 
 
-	const char* vertex_shader_src = 
+	const char* vertex_shader_src =
 		"#version 330 core\n"
 		"layout (location = 0) in vec3 pos;\n"
 		//"layout (location = 1) in vec2 texcoords;\n"
@@ -94,9 +95,9 @@ GLuint compile_shader() { //function type unsigned int can only be positive
 	}
 
 	// Compile the fragment shader
-	GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER); 
+	GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
 	glShaderSource(fragment_shader, 1, &fragment_shader_src, NULL);
-	glCompileShader(fragment_shader); 
+	glCompileShader(fragment_shader);
 
 	// Check for errors
 	glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);
@@ -184,37 +185,36 @@ void render_scene(GLFWwindow* window, GLsizei vertex_count, GLuint shader_progra
 	static float incrementer = 0.0f;
 	static float dir2 = 1.0;
 
-	glClearColor(0.7f, 0.0f, 0.5f, 1.0f);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
 	glClear(GL_COLOR_BUFFER_BIT);
-	
+
 	if (dir > 0.0) {
 		red += 0.001f;
 		if (red > 1.0) {
 			dir = -1.0;
 		}
 	}
-		else {
-			red -= 0.001f;
-		}
-		if (red < 0.0) {
-			dir = 1.0;
-		}
+	else {
+		red -= 0.001f;
+	}
+	if (red < 0.0) {
+		dir = 1.0;
+	}
 
 	GLint color_location = glGetUniformLocation(shader_program, "color");
 	GLint offset_location = glGetUniformLocation(shader_program, "offset");
 	//GLint texture_location = glGetUniformLocation(shader_program, "sampler2Dtex");
 
-	glUniform4f(color_location, red, 0.0, 0.0, 1.0); //red, green, blue
-	glUniform2f(offset_location, red, red); //x and y coordinates
-	glDrawArrays(GL_TRIANGLES, 0, vertex_count);
+	for (double i = 0; i < 1.0; i = i + 0.01) {
 
-	glUniform4f(color_location, 0.0, 0.0, red, 1.0); //blue triangle
-	glUniform2f(offset_location, -0.5,red);
-	glDrawArrays(GL_TRIANGLES, 0, vertex_count);
+		float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 
-	
+		glUniform4f(color_location, 0.0, 0.0, 1.0, 1.0); //red, green, blue
+		glUniform2f(offset_location, -0.5+i, -0.4+r); //x and y coordinates
+		glDrawArrays(GL_TRIANGLES, 0, vertex_count);
 
+	}
 
 	// Display the results on screen
 	glfwSwapBuffers(window);
@@ -224,7 +224,7 @@ void render_scene(GLFWwindow* window, GLsizei vertex_count, GLuint shader_progra
 void cleanup(GLFWwindow* window) {//takes in window pointer into the argument
 	// Call glfw terminate here
 	glfwTerminate(); //this terminates the glfw library after we are done
-	
+
 }
 
 int main(void) {
@@ -236,7 +236,7 @@ int main(void) {
 	//also create argument in the render scene function for shader_program so
 	//render_scene(window,vertex_count,shader_program)
 	 //sets shader_program to the return of compile_shader()
-	 
+
 	GLuint vao, vbo; //unsigned int that can only be positive and we are creating a vertex array object and vertex buffer object
 	GLsizei vertex_count;  //an int used for size 
 	GLFWwindow* window = initialize_glfw(); //a pointer object for window that equals the glfw function
@@ -246,10 +246,10 @@ int main(void) {
 	//the values are changed because they are by reference into the functions above.
 
 	compile_shader(); //calls compile_shader
-	load_geometry(&vao,&vbo,&vertex_count); //calls load geometry and we pass in vao,vbo,and vertex_count by reference
+	load_geometry(&vao, &vbo, &vertex_count); //calls load geometry and we pass in vao,vbo,and vertex_count by reference
 
-	while (!glfwWindowShouldClose(window)){
-		render_scene(window, vertex_count,shader_program);//calls render scene and passes in window pointer and vertex count
+	while (!glfwWindowShouldClose(window)) {
+		render_scene(window, vertex_count, shader_program);//calls render scene and passes in window pointer and vertex count
 		glfwPollEvents();
 	}
 

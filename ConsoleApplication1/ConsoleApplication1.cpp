@@ -35,31 +35,17 @@ GLFWwindow* initialize_glfw() {
 }
 
 
-GLuint compile_shader() { //function type unsigned int can only be positive
-	// Define shader sourcecode
-	//declaring constant char pointer named vertext_shader_src that equals a string 
-	//we are creating two shaders the vertex_shader and the fragment shader
-	//vertex is working with the vertices and the fragment shader takes care of the color
-	//after we create them we link them into one shader program 
-
-	//we declare the uniforms inside the src string and then change them in the render scene
-	//by returning the uniform and saving it into a variable and changing the values we could also
-	//use loops to change position or color by going from 0.0-1.0f
-	//if you name something "offset" in the source then we pass it in as an argument later on 
+GLuint compile_shader() {  
 
 	const char* vertex_shader_src =
 		"#version 330 core\n"
 		"layout (location = 0) in vec3 pos;\n"
-		//"layout (location = 1) in vec2 texcoords;\n"
-		//"out vec2 Texcoords;\n"
-		//"in vec2 Texcoords;\n"
-		//"uniform vec4 color;\n"
-		//
-
-
+		"layout (location = 1) in vec2 texcoords;\n"
+		"out vec2 Texcoords;\n"
 		"uniform vec2 offset;\n"
 
 		"void main() {\n"
+			"Texcoords = texcoords;"
 		"   gl_Position = vec4(pos.x + offset.x, pos.y + offset.y, pos.z, 1.0);\n"
 		"}\n";
 
@@ -67,12 +53,13 @@ GLuint compile_shader() { //function type unsigned int can only be positive
 		"#version 330 core\n"
 		"out vec4 FragColor;\n"
 		"uniform vec4 color;\n"
-		//"uniform sampler2Dtex;\n"
-		//"
+		"in vec2 Texcoords;\n"
+		"uniform sampler2D tex;\n"
 
 		"void main() {\n" //color is the name of the vec 4 (r,g,b,a)
-		//"vec2uvs = vec2(gl_FragCoord)/100.00;\n"
-		"   FragColor = color;\n"
+			
+			"vec2 uvs = vec2(gl_FragCoord) / 100.0;\n"
+			"FragColor = texture(tex, Texcoords);\n"
 		"}\n";
 
 	// Define some vars
@@ -135,15 +122,10 @@ void load_geometry(GLuint* vao, GLuint* vbo, GLsizei* vertex_count) {
 	{
 		// Generate the data on the CPU
 		GLfloat vertices[] = {
-			0.0f, 0.05f, 0.0f, // top center
-			0.0f, 0.0f, 0.0f, // bottom right
-			0.05f, 0.0f, 0.0f, // bottom left
+		0.0f,  0.05f, 0.0f, 	0.05, 1.0, // top center
+         0.05f, -0.05f, 0.0f, 	1.0, 0.0, // bottom right
+		-0.05f, -0.05f, 0.0f, 	0.0, 0.0, // bottom left
 
-			/*
-			0.0f, 0.5f, 0.0f, // top center
-			0.5, 0.5f, 0.0f, // bottom right
-			0.5f, 0.0f, 0.0f, // bottom left
-			*/
 		};
 		*vertex_count = sizeof(vertices) / sizeof(vertices[0]);
 
@@ -166,16 +148,66 @@ void load_geometry(GLuint* vao, GLuint* vbo, GLsizei* vertex_count) {
 		// Tell OpenGL that we want to set this as the current vertex array
 		glBindVertexArray(*vao);
 
+		GLsizei stride = 5 * sizeof(GLfloat);
+
 		// Tell OpenGL the settings for the current 0th vertex array!
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void*)0);
+		glVertexAttribPointer(
+			0, // index
+			3, // size
+			GL_FLOAT, // type
+			GL_FALSE, // normalized
+			stride, // stride (how far to the next repetition)
+			(void*)0 // first component
+		);
+
 
 		// Enable the 0th vertex attrib array!
 		glEnableVertexAttribArray(0);
+
+		glVertexAttribPointer(
+			1, // index
+			2, // size
+			GL_FLOAT, // type
+			GL_FALSE, // normalized
+			stride, // stride (how far to the next repetition)
+			(void*)(3 * sizeof(GLfloat)) // first component
+		);
+		glEnableVertexAttribArray(1);
+
 	}
 }
 
 //we could use the uniforms here to create the offset while still using the same triangle
 //template 
+
+
+GLuint load_textures() {
+
+	glActiveTexture(GL_TEXTURE0);
+
+	GLuint tex;
+	glGenTextures(1, &tex);
+
+	glBindTexture(GL_TEXTURE_2D, tex);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+	GLsizei width = 2;
+	GLsizei height = 2;
+
+	float pixels[] = {
+	0.0f, 0.0f, 0.0f,	1.0f, 1.0f, 1.0f, // r, g, b,   r, g, b
+	1.0f, 1.0f, 1.0f,	0.0f, 0.0f, 0.0f, // r, g, b,   r, g, b
+	};
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_FLOAT, pixels);
+
+	return tex;
+}
 
 void render_scene(GLFWwindow* window, GLsizei vertex_count, GLuint shader_program) {
 
@@ -185,7 +217,7 @@ void render_scene(GLFWwindow* window, GLsizei vertex_count, GLuint shader_progra
 	static float incrementer = 0.0f;
 	static float dir2 = 1.0;
 
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClearColor(0.0f, 0.0f, 0.5f, 1.0f);
 
 	glClear(GL_COLOR_BUFFER_BIT);
 
@@ -204,15 +236,17 @@ void render_scene(GLFWwindow* window, GLsizei vertex_count, GLuint shader_progra
 
 	GLint color_location = glGetUniformLocation(shader_program, "color");
 	GLint offset_location = glGetUniformLocation(shader_program, "offset");
-	//GLint texture_location = glGetUniformLocation(shader_program, "sampler2Dtex");
+	GLint texture_location = glGetUniformLocation(shader_program, "sampler2Dtex");
+	GLuint tex_location = glGetUniformLocation(shader_program, "tex");
 
 	for (double i = 0; i < 1.0; i = i + 0.01) {
 
 		float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 
-		glUniform4f(color_location, 0.0, 0.0, 1.0, 1.0); //red, green, blue
-		glUniform2f(offset_location, -0.5+i, -0.4+r); //x and y coordinates
-		glDrawArrays(GL_TRIANGLES, 0, vertex_count);
+		//glUniform4f(color_location, 0.0, 0.0, 1.0, 1.0); //red, green, blue
+		glUniform1i(tex_location, 0);
+		glUniform2f(offset_location, -0.5 + i, -0.4 + r); //x and y coordinates
+		glDrawArrays(GL_TRIANGLES, 0, vertex_count); 
 
 	}
 
@@ -242,11 +276,13 @@ int main(void) {
 	GLFWwindow* window = initialize_glfw(); //a pointer object for window that equals the glfw function
 	GLuint shader_program = compile_shader();
 
+
 	//these are all uninitialized at thr start but when they are passed into the function then 
 	//the values are changed because they are by reference into the functions above.
-
+	load_textures();
 	compile_shader(); //calls compile_shader
 	load_geometry(&vao, &vbo, &vertex_count); //calls load geometry and we pass in vao,vbo,and vertex_count by reference
+	
 
 	while (!glfwWindowShouldClose(window)) {
 		render_scene(window, vertex_count, shader_program);//calls render scene and passes in window pointer and vertex count

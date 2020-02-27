@@ -3,7 +3,6 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
-
 GLFWwindow* initialize_glfw() {
 	// Initialize the context
 	if (!glfwInit()) { //cancels the application if it can not open the window
@@ -181,7 +180,7 @@ void load_geometry(GLuint* vao, GLuint* vbo, GLsizei* vertex_count) {
 //template 
 
 
-GLuint load_textures() {
+GLuint load_textures(){
 
 	glActiveTexture(GL_TEXTURE0);
 
@@ -236,7 +235,7 @@ void render_scene(GLFWwindow* window, GLsizei vertex_count, GLuint shader_progra
 
 	GLint color_location = glGetUniformLocation(shader_program, "color");
 	GLint offset_location = glGetUniformLocation(shader_program, "offset");
-	GLint texture_location = glGetUniformLocation(shader_program, "sampler2Dtex");
+	//GLint texture_location = glGetUniformLocation(shader_program, "sampler2Dtex");
 	GLuint tex_location = glGetUniformLocation(shader_program, "tex");
 
 	for (double i = 0; i < 1.0; i = i + 0.01) {
@@ -250,6 +249,35 @@ void render_scene(GLFWwindow* window, GLsizei vertex_count, GLuint shader_progra
 
 	}
 
+	/*
+	for (double i = 0; i < 1.0; i = i + 0.01) {
+
+		float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+
+		//glUniform4f(color_location, 0.0, 0.0, 1.0, 1.0); //red, green, blue
+		glUniform1i(tex_location, 0);
+		glUniform2f(offset_location, 0.5 + i, -0.4 + r); //x and y coordinates
+		glDrawArrays(GL_TRIANGLES, 0, vertex_count);
+
+	}
+	*/
+	
+	/*
+	
+	for (double i = 0; i < 1.0; i = i + 0.01) {
+
+		float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+
+		//glUniform4f(color_location, 0.0, 0.0, 1.0, 1.0); //red, green, blue
+		glUniform1i(tex_location, 0);
+		glUniform2f(offset_location, -1.0 + i, -0.4 + r); //x and y coordinates
+		glDrawArrays(GL_TRIANGLES, 0, vertex_count);
+
+	}
+	
+	*/
+	
+	
 	// Display the results on screen
 	glfwSwapBuffers(window);
 
@@ -258,7 +286,6 @@ void render_scene(GLFWwindow* window, GLsizei vertex_count, GLuint shader_progra
 void cleanup(GLFWwindow* window) {//takes in window pointer into the argument
 	// Call glfw terminate here
 	glfwTerminate(); //this terminates the glfw library after we are done
-
 }
 
 int main(void) {

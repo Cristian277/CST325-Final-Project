@@ -4,6 +4,9 @@
 #include <GLFW/glfw3.h>
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#include "glm/glm.hpp"
+#include "glm/gtc/type_ptr.hpp"
+
 
 GLFWwindow* initialize_glfw() {
 	// Initialize the context
@@ -44,10 +47,11 @@ GLuint compile_shader() {
 		"layout (location = 1) in vec2 texcoords;\n"
 		"out vec2 Texcoords;\n"
 		"uniform vec2 offset;\n"
+		"uniform mat4 camera_from_world;\n"
 
 		"void main() {\n"
 			"Texcoords = texcoords;"
-		"   gl_Position = vec4(pos.x + offset.x, pos.y + offset.y, pos.z, 1.0);\n"
+		"   gl_Position = camera_from_world * vec4(pos.x + offset.x, pos.y + offset.y, pos.z, 1.0);\n" //1 at the end is for matrix mult
 		"}\n";
 
 	const char* fragment_shader_src =
@@ -226,7 +230,7 @@ GLuint load_textures(){
 	return texture;
 }
 
-void render_scene(GLFWwindow* window, GLsizei vertex_count, GLuint shader_program) {
+void render_scene(GLFWwindow* window, GLsizei vertex_count, GLuint shader_program, glm::mat4 camera_from_world) {
 
 	static float red = 0.0f;
 	static float dir = 1.0f;
@@ -251,52 +255,33 @@ void render_scene(GLFWwindow* window, GLsizei vertex_count, GLuint shader_progra
 		dir = 1.0;
 	}
 
+	
+
+	GLint world_to_camera_location = glGetUniformLocation(shader_program, "camera_from_world");
 	GLint color_location = glGetUniformLocation(shader_program, "color");
 	GLint offset_location = glGetUniformLocation(shader_program, "offset");
 	GLint texture_location = glGetUniformLocation(shader_program, "sampler2Dtex");
 	GLuint tex_location = glGetUniformLocation(shader_program, "tex");
 
-
+	//4x4 matrix filled with floats
+	glUniformMatrix4fv(
+		world_to_camera_location,
+		1, // count
+		GL_FALSE, // transpose
+		glm::value_ptr(camera_from_world)
+	);
 
 	for (double i = 0; i < 1.0; i = i + 0.01) {
 
 		float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 
+		//camera_from_world = glm::translate(camera_from_world, glm::vec3(0.0001f, 0.0f, 0.0f));
 		//glUniform4f(color_location, 0.0, 0.0, 1.0, 1.0); //red, green, blue
 		glUniform1i(tex_location, 0);
 		glUniform2f(offset_location, -0.5 + i, -0.4 + r); //x and y coordinates
 		glDrawArrays(GL_TRIANGLES, 0, vertex_count); 
 
 	}
-
-	/*
-	for (double i = 0; i < 1.0; i = i + 0.01) {
-
-		float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-
-		//glUniform4f(color_location, 0.0, 0.0, 1.0, 1.0); //red, green, blue
-		glUniform1i(tex_location, 0);
-		glUniform2f(offset_location, 0.5 + i, -0.4 + r); //x and y coordinates
-		glDrawArrays(GL_TRIANGLES, 0, vertex_count);
-
-	}
-	*/
-	
-	/*
-	
-	for (double i = 0; i < 1.0; i = i + 0.01) {
-
-		float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-
-		//glUniform4f(color_location, 0.0, 0.0, 1.0, 1.0); //red, green, blue
-		glUniform1i(tex_location, 0);
-		glUniform2f(offset_location, -1.0 + i, -0.4 + r); //x and y coordinates
-		glDrawArrays(GL_TRIANGLES, 0, vertex_count);
-
-	}
-	
-	*/
-	
 	
 	// Display the results on screen
 	glfwSwapBuffers(window);
@@ -310,14 +295,6 @@ void cleanup(GLFWwindow* window) {//takes in window pointer into the argument
 
 int main(void) {
 
-	//initialize and empty shader program in the main the set it 
-	//have to get the shader program by doing GLuint shade_program =shade_compiler();
-	//pass this shade program into the render scene in the loop 
-	//this is the exact shade_program that we created in the function
-	//also create argument in the render scene function for shader_program so
-	//render_scene(window,vertex_count,shader_program)
-	 //sets shader_program to the return of compile_shader()
-
 	GLuint vao, vbo; //unsigned int that can only be positive and we are creating a vertex array object and vertex buffer object
 	GLsizei vertex_count;  //an int used for size 
 	GLFWwindow* window = initialize_glfw(); //a pointer object for window that equals the glfw function
@@ -328,11 +305,18 @@ int main(void) {
 	//the values are changed because they are by reference into the functions above.
 	load_textures();
 	compile_shader(); //calls compile_shader
-	load_geometry(&vao, &vbo, &vertex_count); //calls load geometry and we pass in vao,vbo,and vertex_count by reference
+	load_geometry(&vao, &vbo, &vertex_count);
+	//calls load geometry and we pass in vao,vbo,and vertex_count by reference
 	
+	glm::mat4 camera_from_world = glm::mat4(1.0); // init to the identity matrix
+
 
 	while (!glfwWindowShouldClose(window)) {
-		render_scene(window, vertex_count, shader_program);//calls render scene and passes in window pointer and vertex count
+
+		//camera from world is being changed here before it is being passed into the render_scene
+		//camera_from_world = glm::translate(camera_from_world, glm::vec3(0.0001f, 0.0f, 0.0f));
+
+		render_scene(window, vertex_count, shader_program,camera_from_world);//calls render scene and passes in window pointer and vertex count
 		glfwPollEvents();
 	}
 

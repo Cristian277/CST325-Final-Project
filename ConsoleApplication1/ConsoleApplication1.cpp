@@ -35,6 +35,8 @@ GLFWwindow* initialize_glfw() {
 	glewExperimental = GL_TRUE;
 	glewInit();
 
+	glEnable(GL_DEPTH_TEST);
+
 	return window; //returns window pointer type glfwwindow
 }
 
@@ -161,11 +163,49 @@ void load_geometry(GLuint* vao, GLuint* vbo, GLsizei* vertex_count) {
 	{
 		// Generate the data on the CPU
 		GLfloat vertices[] = {
-		0.0f,  0.5f, 0.0f, 	0.5, 1.0, // top center
-         0.5f, -0.5f, 0.0f, 	1.0, 0.0, // bottom right
-		-0.5f, -0.5f, 0.0f, 	0.0, 0.0, // bottom left
+			0.0f,  0.0f, 0.0f, 	10.0, 10.0,
+			0.0f,  1.0f, 0.0f, 	10.0, 0.0,
+			1.0f,  1.0f, 0.0f, 	0.0, 0.0,
+			0.0f,  0.0f, 0.0f, 	10.0, 10.0,
+			1.0f,  0.0f, 0.0f, 	10.0, 0.0,
+			1.0f,  1.0f, 0.0f, 	0.0, 0.0,
 
+			0.0f,  0.0f, 1.0f, 	10.0, 10.0,
+			0.0f,  1.0f, 1.0f, 	10.0, 0.0,
+			1.0f,  1.0f, 1.0f, 	0.0, 0.0,
+			0.0f,  0.0f, 1.0f, 	10.0, 10.0,
+			1.0f,  0.0f, 1.0f, 	10.0, 0.0,
+			1.0f,  1.0f, 1.0f, 	0.0, 0.0,
+
+			1.0f, 0.0f,  0.0f, 	10.0, 10.0,
+			1.0f, 0.0f,  1.0f, 	10.0, 0.0,
+			1.0f, 1.0f,  1.0f, 	0.0, 0.0,
+			1.0f, 0.0f,  0.0f, 	10.0, 10.0,
+			1.0f, 1.0f,  0.0f, 	10.0, 0.0,
+			1.0f, 1.0f,  1.0f, 	0.0, 0.0,
+
+			0.0f, 0.0f,  0.0f, 	10.0, 10.0,
+			0.0f, 0.0f,  1.0f, 	10.0, 0.0,
+			0.0f, 1.0f,  1.0f, 	0.0, 0.0,
+			0.0f, 0.0f,  0.0f, 	10.0, 10.0,
+			0.0f, 1.0f,  0.0f, 	10.0, 0.0,
+			0.0f, 1.0f,  1.0f, 	0.0, 0.0,
+
+			0.0f, 0.0f, 0.0f, 	10.0, 10.0,
+			0.0f, 0.0f, 1.0f, 	10.0, 0.0,
+			1.0f, 0.0f, 1.0f, 	0.0, 0.0,
+			0.0f, 0.0f, 0.0f, 	10.0, 10.0,
+			1.0f, 0.0f, 0.0f, 	10.0, 0.0,
+			1.0f, 0.0f, 1.0f, 	0.0, 0.0,
+
+			0.0f, 1.0f, 0.0f, 	10.0, 10.0,
+			0.0f, 1.0f, 1.0f, 	10.0, 0.0,
+			1.0f, 1.0f, 1.0f, 	0.0, 0.0,
+			0.0f, 1.0f, 0.0f, 	10.0, 10.0,
+			1.0f, 1.0f, 0.0f, 	10.0, 0.0,
+			1.0f, 1.0f, 1.0f, 	0.0, 0.0,
 		};
+
 		*vertex_count = sizeof(vertices) / sizeof(vertices[0]);
 
 		// Use OpenGL to store it on the GPU
@@ -236,7 +276,7 @@ GLuint load_textures(){
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	// load and generate the texture
 	int width, height, nrChannels;
-	unsigned char* data = stbi_load("container.jpg", &width, &height, &nrChannels, 0);
+	unsigned char* data = stbi_load("distressed-texture-2.jpg", &width, &height, &nrChannels, 0);
 	if (data)
 	{
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
@@ -274,7 +314,7 @@ void render_scene(GLFWwindow* window, GLsizei vertex_count, GLuint shader_progra
 
 	glClearColor(0.0f, 0.0f, 0.5f, 1.0f);
 
-	glClear(GL_COLOR_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
 	if (dir > 0.0) {
 		red += 0.001f;
@@ -311,21 +351,6 @@ void render_scene(GLFWwindow* window, GLsizei vertex_count, GLuint shader_progra
 		glm::value_ptr(camera.view_from_camera(window))
 	);
 
-
-	/*
-	for (double i = 0; i < 1.0; i = i + 0.01) {
-
-		float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-
-		//glUniform4f(color_location, 0.0, 0.0, 1.0, 1.0); //red, green, blue
-		glUniform1i(tex_location, 0);
-		glUniform2f(offset_location, -0.5 + i, -0.4 + r); //x and y coordinates
-		glDrawArrays(GL_TRIANGLES, 0, vertex_count); 
-
-	}
-
-	*/
-
 	for (int i = 0; i < particles->size(); ++i) {
 
 		Particle* particle = &(*particles)[i];
@@ -338,7 +363,7 @@ void render_scene(GLFWwindow* window, GLsizei vertex_count, GLuint shader_progra
 		particle->world_from_model=glm::rotate(
 			particle->world_from_model,
 			0.001f,
-			glm::vec3(0.0f, 1.0f, 0.0f)
+			glm::vec3(1.0f, 1.0f, 0.0f)
 		);
 
 		GLint world_from_model_location = glGetUniformLocation(shader_program, "world_from_model");
@@ -369,7 +394,6 @@ void render_scene(GLFWwindow* window, GLsizei vertex_count, GLuint shader_progra
 
 	}
 
-	
 	// Display the results on screen
 	glfwSwapBuffers(window);
 
@@ -395,20 +419,11 @@ int main(void) {
 	load_geometry(&vao, &vbo, &vertex_count);
 
 	std::vector<Particle>particles;
+	
 	particles.push_back(Particle(
-		glm::translate(glm::mat4(1), glm::vec3(0.0f,0.0f,0.0f)),
+		glm::translate(glm::mat4(1), glm::vec3(-0.5f,0.0f,0.0f)),
 		glm::vec3(0.0f,0.0f,0.0f)
 		));
-	particles.push_back(Particle(
-		glm::translate(glm::mat4(1), glm::vec3(1.0f, 0.0f, 0.0f)),
-		glm::vec3(0.0f, 0.0f, 0.0f)
-	));
-	particles.push_back(Particle(
-		glm::translate(glm::mat4(1), glm::vec3(2.0f, 0.0f, 0.0f)),
-		glm::vec3(0.0f, 0.0f, 0.0f)
-	));
-
-	particles.push_back(Particle(glm::mat4(1), glm::vec3(1.0f/4.0f,0.0f,0.0f)));
 
 	//calls load geometry and we pass in vao,vbo,and vertex_count by reference
 	

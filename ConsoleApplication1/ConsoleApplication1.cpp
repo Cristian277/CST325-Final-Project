@@ -38,7 +38,6 @@ GLFWwindow* initialize_glfw() {
 	return window; //returns window pointer type glfwwindow
 }
 
-
 struct Camera {
 
 	glm::mat4 camera_from_world = glm::mat4(1);
@@ -63,16 +62,14 @@ struct Camera {
 };
 
 struct Particle {
-	glm::vec3 position;
+	glm::mat4 world_from_model;
 	glm::vec3 velocity;
 
-
-	Particle(glm::vec3 position,glm::vec3 velocity) {
-		this->position = position;
+	Particle(glm::mat4 world_from_model, glm::vec3 velocity) {
+		this->world_from_model = world_from_model;
 		this->velocity = velocity;
 	}
 };
-
 
 GLuint compile_shader() {  
 
@@ -84,10 +81,11 @@ GLuint compile_shader() {
 		"uniform vec2 offset;\n"
 		"uniform mat4 camera_from_world;\n"
 		"uniform mat4 view_from_camera;\n"
+		"uniform mat4 world_from_model;\n"
 
 		"void main() {\n"
 			"Texcoords = texcoords;"
-		"   gl_Position = view_from_camera*camera_from_world * vec4(pos.x + offset.x, pos.y + offset.y, pos.z, 1.0);\n" //1 at the end is for matrix mult
+		"   gl_Position = view_from_camera*camera_from_world *world_from_model* vec4(pos,1.0);\n" //1 at the end is for matrix mult
 		"}\n";
 
 	const char* fragment_shader_src =
@@ -298,6 +296,13 @@ void render_scene(GLFWwindow* window, GLsizei vertex_count, GLuint shader_progra
 	GLuint tex_location = glGetUniformLocation(shader_program, "tex");
 	GLint view_from_camera_location = glGetUniformLocation(shader_program, "view_from_camera"); //newest location
 
+	//4x4 matrix filled with floats
+	glUniformMatrix4fv(
+		world_to_camera_location,
+		1, // count
+		GL_FALSE, // transpose
+		glm::value_ptr(camera.camera_from_world)
+	);
 
 	glUniformMatrix4fv(
 		view_from_camera_location,
@@ -306,13 +311,7 @@ void render_scene(GLFWwindow* window, GLsizei vertex_count, GLuint shader_progra
 		glm::value_ptr(camera.view_from_camera(window))
 	);
 
-	//4x4 matrix filled with floats
-	glUniformMatrix4fv(
-		world_to_camera_location,
-		1, // count
-		GL_FALSE, // transpose
-		glm::value_ptr(camera.camera_from_world)
-	);
+
 	/*
 	for (double i = 0; i < 1.0; i = i + 0.01) {
 
@@ -331,8 +330,26 @@ void render_scene(GLFWwindow* window, GLsizei vertex_count, GLuint shader_progra
 
 		Particle* particle = &(*particles)[i];
 
-		particle->position += particle->velocity;
+		particle->world_from_model = glm::translate(
+			particle->world_from_model,
+			particle->velocity
+		);
 
+		particle->world_from_model=glm::rotate(
+			particle->world_from_model,
+			0.001f,
+			glm::vec3(0.0f, 1.0f, 0.0f)
+		);
+
+		GLint world_from_model_location = glGetUniformLocation(shader_program, "world_from_model");
+		glUniformMatrix4fv(
+			world_from_model_location,
+			1, // count
+			GL_FALSE, // transpose
+			glm::value_ptr(particle->world_from_model)
+		);
+
+		/*
 		if (particle->position.x > 1.0) {
 			particle->velocity.x = -abs(particle->velocity.x);
 		}
@@ -346,8 +363,8 @@ void render_scene(GLFWwindow* window, GLsizei vertex_count, GLuint shader_progra
 		else if(particle->position.y<0.0){
 			particle->velocity.y = abs(particle->velocity.y);
 		}
+		*/
 
-		glUniform2f(offset_location, particle->position.x, particle->position.y);
 		glDrawArrays(GL_TRIANGLES, 0, vertex_count);
 
 	}
@@ -378,8 +395,20 @@ int main(void) {
 	load_geometry(&vao, &vbo, &vertex_count);
 
 	std::vector<Particle>particles;
-	particles.push_back(Particle(glm::vec3(0.0f,0.0f,0.0f), glm::vec3(0.001f,0.0f,0.0f)));
-	particles.push_back(Particle(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,0.001f,0.0f)));
+	particles.push_back(Particle(
+		glm::translate(glm::mat4(1), glm::vec3(0.0f,0.0f,0.0f)),
+		glm::vec3(0.0f,0.0f,0.0f)
+		));
+	particles.push_back(Particle(
+		glm::translate(glm::mat4(1), glm::vec3(1.0f, 0.0f, 0.0f)),
+		glm::vec3(0.0f, 0.0f, 0.0f)
+	));
+	particles.push_back(Particle(
+		glm::translate(glm::mat4(1), glm::vec3(2.0f, 0.0f, 0.0f)),
+		glm::vec3(0.0f, 0.0f, 0.0f)
+	));
+
+	particles.push_back(Particle(glm::mat4(1), glm::vec3(1.0f/4.0f,0.0f,0.0f)));
 
 	//calls load geometry and we pass in vao,vbo,and vertex_count by reference
 	

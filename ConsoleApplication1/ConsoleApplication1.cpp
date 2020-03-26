@@ -6,7 +6,7 @@
 #include "stb_image.h"
 #include "glm/glm.hpp"
 #include "glm/gtc/type_ptr.hpp"
-
+#include <vector>
 
 GLFWwindow* initialize_glfw() {
 	// Initialize the context
@@ -39,6 +39,41 @@ GLFWwindow* initialize_glfw() {
 }
 
 
+struct Camera {
+
+	glm::mat4 camera_from_world = glm::mat4(1);
+	float fov = 60.0f;
+	float near = 0.1f;
+	float far = 1000.0f;
+
+	glm::mat4 view_from_camera(GLFWwindow* window) {
+
+		int width, height;
+		glfwGetWindowSize(window, &width, &height);
+
+		glViewport(0.0f, 0.0f, width, height);
+		return glm::perspective(
+			glm::radians(this->fov),
+			(float)width / (float)height,
+			this->near,
+			this->far
+		);
+	}
+
+};
+
+struct Particle {
+	glm::vec3 position;
+	glm::vec3 velocity;
+
+
+	Particle(glm::vec3 position,glm::vec3 velocity) {
+		this->position = position;
+		this->velocity = velocity;
+	}
+};
+
+
 GLuint compile_shader() {  
 
 	const char* vertex_shader_src =
@@ -48,10 +83,11 @@ GLuint compile_shader() {
 		"out vec2 Texcoords;\n"
 		"uniform vec2 offset;\n"
 		"uniform mat4 camera_from_world;\n"
+		"uniform mat4 view_from_camera;\n"
 
 		"void main() {\n"
 			"Texcoords = texcoords;"
-		"   gl_Position = camera_from_world * vec4(pos.x + offset.x, pos.y + offset.y, pos.z, 1.0);\n" //1 at the end is for matrix mult
+		"   gl_Position = view_from_camera*camera_from_world * vec4(pos.x + offset.x, pos.y + offset.y, pos.z, 1.0);\n" //1 at the end is for matrix mult
 		"}\n";
 
 	const char* fragment_shader_src =
@@ -127,9 +163,9 @@ void load_geometry(GLuint* vao, GLuint* vbo, GLsizei* vertex_count) {
 	{
 		// Generate the data on the CPU
 		GLfloat vertices[] = {
-		0.0f,  0.05f, 0.0f, 	0.05, 1.0, // top center
-         0.05f, -0.05f, 0.0f, 	1.0, 0.0, // bottom right
-		-0.05f, -0.05f, 0.0f, 	0.0, 0.0, // bottom left
+		0.0f,  0.5f, 0.0f, 	0.5, 1.0, // top center
+         0.5f, -0.5f, 0.0f, 	1.0, 0.0, // bottom right
+		-0.5f, -0.5f, 0.0f, 	0.0, 0.0, // bottom left
 
 		};
 		*vertex_count = sizeof(vertices) / sizeof(vertices[0]);
@@ -230,7 +266,7 @@ GLuint load_textures(){
 	return texture;
 }
 
-void render_scene(GLFWwindow* window, GLsizei vertex_count, GLuint shader_program, glm::mat4 camera_from_world) {
+void render_scene(GLFWwindow* window, GLsizei vertex_count, GLuint shader_program, Camera camera, std::vector<Particle>*particles) {
 
 	static float red = 0.0f;
 	static float dir = 1.0f;
@@ -255,33 +291,67 @@ void render_scene(GLFWwindow* window, GLsizei vertex_count, GLuint shader_progra
 		dir = 1.0;
 	}
 
-	
-
 	GLint world_to_camera_location = glGetUniformLocation(shader_program, "camera_from_world");
 	GLint color_location = glGetUniformLocation(shader_program, "color");
 	GLint offset_location = glGetUniformLocation(shader_program, "offset");
 	GLint texture_location = glGetUniformLocation(shader_program, "sampler2Dtex");
 	GLuint tex_location = glGetUniformLocation(shader_program, "tex");
+	GLint view_from_camera_location = glGetUniformLocation(shader_program, "view_from_camera"); //newest location
+
+
+	glUniformMatrix4fv(
+		view_from_camera_location,
+		1, // count
+		GL_FALSE, // transpose
+		glm::value_ptr(camera.view_from_camera(window))
+	);
 
 	//4x4 matrix filled with floats
 	glUniformMatrix4fv(
 		world_to_camera_location,
 		1, // count
 		GL_FALSE, // transpose
-		glm::value_ptr(camera_from_world)
+		glm::value_ptr(camera.camera_from_world)
 	);
-
+	/*
 	for (double i = 0; i < 1.0; i = i + 0.01) {
 
 		float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 
-		//camera_from_world = glm::translate(camera_from_world, glm::vec3(0.0001f, 0.0f, 0.0f));
 		//glUniform4f(color_location, 0.0, 0.0, 1.0, 1.0); //red, green, blue
 		glUniform1i(tex_location, 0);
 		glUniform2f(offset_location, -0.5 + i, -0.4 + r); //x and y coordinates
 		glDrawArrays(GL_TRIANGLES, 0, vertex_count); 
 
 	}
+
+	*/
+
+	for (int i = 0; i < particles->size(); ++i) {
+
+		Particle* particle = &(*particles)[i];
+
+		particle->position += particle->velocity;
+
+		if (particle->position.x > 1.0) {
+			particle->velocity.x = -abs(particle->velocity.x);
+		}
+		else if (particle->position.x < 0.0) {
+			particle->velocity.x = abs(particle->velocity.x);
+		}
+
+		if (particle->position.y > 1.0) {
+			particle->velocity.y = -abs(particle->velocity.y);
+		}
+		else if(particle->position.y<0.0){
+			particle->velocity.y = abs(particle->velocity.y);
+		}
+
+		glUniform2f(offset_location, particle->position.x, particle->position.y);
+		glDrawArrays(GL_TRIANGLES, 0, vertex_count);
+
+	}
+
 	
 	// Display the results on screen
 	glfwSwapBuffers(window);
@@ -300,23 +370,31 @@ int main(void) {
 	GLFWwindow* window = initialize_glfw(); //a pointer object for window that equals the glfw function
 	GLuint shader_program = compile_shader();
 
-
 	//these are all uninitialized at thr start but when they are passed into the function then 
 	//the values are changed because they are by reference into the functions above.
+
 	load_textures();
 	compile_shader(); //calls compile_shader
 	load_geometry(&vao, &vbo, &vertex_count);
+
+	std::vector<Particle>particles;
+	particles.push_back(Particle(glm::vec3(0.0f,0.0f,0.0f), glm::vec3(0.001f,0.0f,0.0f)));
+	particles.push_back(Particle(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,0.001f,0.0f)));
+
 	//calls load geometry and we pass in vao,vbo,and vertex_count by reference
 	
-	glm::mat4 camera_from_world = glm::mat4(1.0); // init to the identity matrix
+	Camera camera; // init to the identity matrix
+	camera.camera_from_world = glm::translate(camera.camera_from_world, 
+		glm::vec3(0.0f, 0.0f, -3.0f));
 
+	//need to create a view_from_camera and pass it into the render scene 
+	//and make the view_from camera equal to the function inside the camera struct
 
 	while (!glfwWindowShouldClose(window)) {
 
 		//camera from world is being changed here before it is being passed into the render_scene
-		//camera_from_world = glm::translate(camera_from_world, glm::vec3(0.0001f, 0.0f, 0.0f));
-
-		render_scene(window, vertex_count, shader_program,camera_from_world);//calls render scene and passes in window pointer and vertex count
+		
+		render_scene(window, vertex_count, shader_program,camera,&particles);//calls render scene and passes in window pointer and vertex count
 		glfwPollEvents();
 	}
 

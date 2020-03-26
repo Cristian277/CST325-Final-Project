@@ -40,6 +40,128 @@ GLFWwindow* initialize_glfw() {
 	return window; //returns window pointer type glfwwindow
 }
 
+struct Model {
+
+	GLuint vao;
+	GLuint vbo; //unsigned int that can only be positive and we are creating a vertex array object and vertex buffer object
+	GLsizei vertex_count;  //an int used for size
+
+
+	void draw() {
+		glDrawArrays(GL_TRIANGLES, 0, this->vertex_count);
+	}
+
+	void cleanup() {
+		glDeleteVertexArrays(1, &this->vao);
+		glDeleteBuffers(1, &this->vbo);
+	}
+
+	static Model load() {
+		// Send the vertex data to the GPU
+		Model model;
+
+		{
+			// Generate the data on the CPU
+			GLfloat vertices[] = {
+				0.0f,  0.0f, 0.0f, 	10.0, 10.0,
+				0.0f,  1.0f, 0.0f, 	10.0, 0.0,
+				1.0f,  1.0f, 0.0f, 	0.0, 0.0,
+				0.0f,  0.0f, 0.0f, 	10.0, 10.0,
+				1.0f,  0.0f, 0.0f, 	10.0, 0.0,
+				1.0f,  1.0f, 0.0f, 	0.0, 0.0,
+
+				0.0f,  0.0f, 1.0f, 	10.0, 10.0,
+				0.0f,  1.0f, 1.0f, 	10.0, 0.0,
+				1.0f,  1.0f, 1.0f, 	0.0, 0.0,
+				0.0f,  0.0f, 1.0f, 	10.0, 10.0,
+				1.0f,  0.0f, 1.0f, 	10.0, 0.0,
+				1.0f,  1.0f, 1.0f, 	0.0, 0.0,
+
+				1.0f, 0.0f,  0.0f, 	10.0, 10.0,
+				1.0f, 0.0f,  1.0f, 	10.0, 0.0,
+				1.0f, 1.0f,  1.0f, 	0.0, 0.0,
+				1.0f, 0.0f,  0.0f, 	10.0, 10.0,
+				1.0f, 1.0f,  0.0f, 	10.0, 0.0,
+				1.0f, 1.0f,  1.0f, 	0.0, 0.0,
+
+				0.0f, 0.0f,  0.0f, 	10.0, 10.0,
+				0.0f, 0.0f,  1.0f, 	10.0, 0.0,
+				0.0f, 1.0f,  1.0f, 	0.0, 0.0,
+				0.0f, 0.0f,  0.0f, 	10.0, 10.0,
+				0.0f, 1.0f,  0.0f, 	10.0, 0.0,
+				0.0f, 1.0f,  1.0f, 	0.0, 0.0,
+
+				0.0f, 0.0f, 0.0f, 	10.0, 10.0,
+				0.0f, 0.0f, 1.0f, 	10.0, 0.0,
+				1.0f, 0.0f, 1.0f, 	0.0, 0.0,
+				0.0f, 0.0f, 0.0f, 	10.0, 10.0,
+				1.0f, 0.0f, 0.0f, 	10.0, 0.0,
+				1.0f, 0.0f, 1.0f, 	0.0, 0.0,
+
+				0.0f, 1.0f, 0.0f, 	10.0, 10.0,
+				0.0f, 1.0f, 1.0f, 	10.0, 0.0,
+				1.0f, 1.0f, 1.0f, 	0.0, 0.0,
+				0.0f, 1.0f, 0.0f, 	10.0, 10.0,
+				1.0f, 1.0f, 0.0f, 	10.0, 0.0,
+				1.0f, 1.0f, 1.0f, 	0.0, 0.0,
+			};
+
+			model.vertex_count = sizeof(vertices) / sizeof(vertices[0]);
+
+			// Use OpenGL to store it on the GPU
+			{
+				// Create a Vertex Buffer Object on the GPU
+				glGenBuffers(1, &model.vbo);
+				// Tell OpenGL that we want to set this as the current buffer
+				glBindBuffer(GL_ARRAY_BUFFER, model.vbo);
+				// Copy all our data to the current buffer!
+				glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+			}
+		}
+
+		// Tell the GPU how to interpret our existing vertex data
+		{
+			// Create a Vertex Array Object to hold the settings
+			glGenVertexArrays(1, &model.vao);
+
+			// Tell OpenGL that we want to set this as the current vertex array
+			glBindVertexArray(model.vao);
+
+			GLsizei stride = 5 * sizeof(GLfloat);
+
+			// Tell OpenGL the settings for the current 0th vertex array!
+			glVertexAttribPointer(
+				0, // index
+				3, // size
+				GL_FLOAT, // type
+				GL_FALSE, // normalized
+				stride, // stride (how far to the next repetition)
+				(void*)0 // first component
+			);
+
+
+			// Enable the 0th vertex attrib array!
+			glEnableVertexAttribArray(0);
+
+			glVertexAttribPointer(
+				1, // index
+				2, // size
+				GL_FLOAT, // type
+				GL_FALSE, // normalized
+				stride, // stride (how far to the next repetition)
+				(void*)(3 * sizeof(GLfloat)) // first component
+			);
+			glEnableVertexAttribArray(1);
+
+			return model;
+
+		}
+	}
+
+
+};
+
+
 struct Camera {
 
 	glm::mat4 camera_from_world = glm::mat4(1);
@@ -158,105 +280,6 @@ GLuint compile_shader() {
 }
 
 
-void load_geometry(GLuint* vao, GLuint* vbo, GLsizei* vertex_count) {
-	// Send the vertex data to the GPU
-	{
-		// Generate the data on the CPU
-		GLfloat vertices[] = {
-			0.0f,  0.0f, 0.0f, 	10.0, 10.0,
-			0.0f,  1.0f, 0.0f, 	10.0, 0.0,
-			1.0f,  1.0f, 0.0f, 	0.0, 0.0,
-			0.0f,  0.0f, 0.0f, 	10.0, 10.0,
-			1.0f,  0.0f, 0.0f, 	10.0, 0.0,
-			1.0f,  1.0f, 0.0f, 	0.0, 0.0,
-
-			0.0f,  0.0f, 1.0f, 	10.0, 10.0,
-			0.0f,  1.0f, 1.0f, 	10.0, 0.0,
-			1.0f,  1.0f, 1.0f, 	0.0, 0.0,
-			0.0f,  0.0f, 1.0f, 	10.0, 10.0,
-			1.0f,  0.0f, 1.0f, 	10.0, 0.0,
-			1.0f,  1.0f, 1.0f, 	0.0, 0.0,
-
-			1.0f, 0.0f,  0.0f, 	10.0, 10.0,
-			1.0f, 0.0f,  1.0f, 	10.0, 0.0,
-			1.0f, 1.0f,  1.0f, 	0.0, 0.0,
-			1.0f, 0.0f,  0.0f, 	10.0, 10.0,
-			1.0f, 1.0f,  0.0f, 	10.0, 0.0,
-			1.0f, 1.0f,  1.0f, 	0.0, 0.0,
-
-			0.0f, 0.0f,  0.0f, 	10.0, 10.0,
-			0.0f, 0.0f,  1.0f, 	10.0, 0.0,
-			0.0f, 1.0f,  1.0f, 	0.0, 0.0,
-			0.0f, 0.0f,  0.0f, 	10.0, 10.0,
-			0.0f, 1.0f,  0.0f, 	10.0, 0.0,
-			0.0f, 1.0f,  1.0f, 	0.0, 0.0,
-
-			0.0f, 0.0f, 0.0f, 	10.0, 10.0,
-			0.0f, 0.0f, 1.0f, 	10.0, 0.0,
-			1.0f, 0.0f, 1.0f, 	0.0, 0.0,
-			0.0f, 0.0f, 0.0f, 	10.0, 10.0,
-			1.0f, 0.0f, 0.0f, 	10.0, 0.0,
-			1.0f, 0.0f, 1.0f, 	0.0, 0.0,
-
-			0.0f, 1.0f, 0.0f, 	10.0, 10.0,
-			0.0f, 1.0f, 1.0f, 	10.0, 0.0,
-			1.0f, 1.0f, 1.0f, 	0.0, 0.0,
-			0.0f, 1.0f, 0.0f, 	10.0, 10.0,
-			1.0f, 1.0f, 0.0f, 	10.0, 0.0,
-			1.0f, 1.0f, 1.0f, 	0.0, 0.0,
-		};
-
-		*vertex_count = sizeof(vertices) / sizeof(vertices[0]);
-
-		// Use OpenGL to store it on the GPU
-		{
-			// Create a Vertex Buffer Object on the GPU
-			glGenBuffers(1, vbo);
-			// Tell OpenGL that we want to set this as the current buffer
-			glBindBuffer(GL_ARRAY_BUFFER, *vbo);
-			// Copy all our data to the current buffer!
-			glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-		}
-	}
-
-	// Tell the GPU how to interpret our existing vertex data
-	{
-		// Create a Vertex Array Object to hold the settings
-		glGenVertexArrays(1, vao);
-
-		// Tell OpenGL that we want to set this as the current vertex array
-		glBindVertexArray(*vao);
-
-		GLsizei stride = 5 * sizeof(GLfloat);
-
-		// Tell OpenGL the settings for the current 0th vertex array!
-		glVertexAttribPointer(
-			0, // index
-			3, // size
-			GL_FLOAT, // type
-			GL_FALSE, // normalized
-			stride, // stride (how far to the next repetition)
-			(void*)0 // first component
-		);
-
-
-		// Enable the 0th vertex attrib array!
-		glEnableVertexAttribArray(0);
-
-		glVertexAttribPointer(
-			1, // index
-			2, // size
-			GL_FLOAT, // type
-			GL_FALSE, // normalized
-			stride, // stride (how far to the next repetition)
-			(void*)(3 * sizeof(GLfloat)) // first component
-		);
-		glEnableVertexAttribArray(1);
-
-
-	}
-}
-
 //we could use the uniforms here to create the offset while still using the same triangle
 //template 
 
@@ -299,12 +322,10 @@ GLuint load_textures(){
 	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
 	glEnableVertexAttribArray(2);
 
-	//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_FLOAT, vertices);
-
 	return texture;
 }
 
-void render_scene(GLFWwindow* window, GLsizei vertex_count, GLuint shader_program, Camera camera, std::vector<Particle>*particles) {
+void render_scene(GLFWwindow* window, Model model, GLuint shader_program, Camera camera, std::vector<Particle>*particles) {
 
 	static float red = 0.0f;
 	static float dir = 1.0f;
@@ -390,7 +411,7 @@ void render_scene(GLFWwindow* window, GLsizei vertex_count, GLuint shader_progra
 		}
 		*/
 
-		glDrawArrays(GL_TRIANGLES, 0, vertex_count);
+		model.draw();
 
 	}
 
@@ -399,24 +420,26 @@ void render_scene(GLFWwindow* window, GLsizei vertex_count, GLuint shader_progra
 
 }
 
-void cleanup(GLFWwindow* window) {//takes in window pointer into the argument
+void cleanup(GLuint shader_program, Model model, GLuint tex) {//takes in window pointer into the argument
 	// Call glfw terminate here
+	glDeleteTextures(1, &tex);
+	glDeleteProgram(shader_program);
+	model.cleanup();
 	glfwTerminate(); //this terminates the glfw library after we are done
 }
 
 int main(void) {
 
-	GLuint vao, vbo; //unsigned int that can only be positive and we are creating a vertex array object and vertex buffer object
-	GLsizei vertex_count;  //an int used for size 
 	GLFWwindow* window = initialize_glfw(); //a pointer object for window that equals the glfw function
 	GLuint shader_program = compile_shader();
+	GLuint tex = load_textures();
 
 	//these are all uninitialized at thr start but when they are passed into the function then 
 	//the values are changed because they are by reference into the functions above.
 
 	load_textures();
 	compile_shader(); //calls compile_shader
-	load_geometry(&vao, &vbo, &vertex_count);
+	Model model = Model::load();
 
 	std::vector<Particle>particles;
 	
@@ -424,6 +447,11 @@ int main(void) {
 		glm::translate(glm::mat4(1), glm::vec3(-0.5f,0.0f,0.0f)),
 		glm::vec3(0.0f,0.0f,0.0f)
 		));
+
+	particles.push_back(Particle(
+		glm::translate(glm::mat4(1), glm::vec3(1.0f, 0.0f, 0.0f)),
+		glm::vec3(0.0f, 0.0f, 0.0f)
+	));
 
 	//calls load geometry and we pass in vao,vbo,and vertex_count by reference
 	
@@ -438,11 +466,11 @@ int main(void) {
 
 		//camera from world is being changed here before it is being passed into the render_scene
 		
-		render_scene(window, vertex_count, shader_program,camera,&particles);//calls render scene and passes in window pointer and vertex count
+		render_scene(window, model, shader_program,camera,&particles);//calls render scene and passes in window pointer and vertex count
 		glfwPollEvents();
 	}
 
-	cleanup(window);
+	cleanup(shader_program,model,tex);
 
 	return 0;
 }

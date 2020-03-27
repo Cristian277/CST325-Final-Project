@@ -7,6 +7,11 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/type_ptr.hpp"
 #include <vector>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <iostream>
+#include <algorithm>
 
 GLFWwindow* initialize_glfw() {
 	// Initialize the context
@@ -46,8 +51,8 @@ struct Model {
 	GLuint vbo; //unsigned int that can only be positive and we are creating a vertex array object and vertex buffer object
 	GLsizei vertex_count;  //an int used for size
 
-
 	void draw() {
+		glBindVertexArray(this->vao);
 		glDrawArrays(GL_TRIANGLES, 0, this->vertex_count);
 	}
 
@@ -60,53 +65,83 @@ struct Model {
 		// Send the vertex data to the GPU
 		Model model;
 
-		{
-			// Generate the data on the CPU
-			GLfloat vertices[] = {
-				0.0f,  0.0f, 0.0f, 	10.0, 10.0,
-				0.0f,  1.0f, 0.0f, 	10.0, 0.0,
-				1.0f,  1.0f, 0.0f, 	0.0, 0.0,
-				0.0f,  0.0f, 0.0f, 	10.0, 10.0,
-				1.0f,  0.0f, 0.0f, 	10.0, 0.0,
-				1.0f,  1.0f, 0.0f, 	0.0, 0.0,
+			std::fstream file("teapot.obj");
+			if (!file) {
 
-				0.0f,  0.0f, 1.0f, 	10.0, 10.0,
-				0.0f,  1.0f, 1.0f, 	10.0, 0.0,
-				1.0f,  1.0f, 1.0f, 	0.0, 0.0,
-				0.0f,  0.0f, 1.0f, 	10.0, 10.0,
-				1.0f,  0.0f, 1.0f, 	10.0, 0.0,
-				1.0f,  1.0f, 1.0f, 	0.0, 0.0,
+				std::cout << "could not find model file";
+				abort();
 
-				1.0f, 0.0f,  0.0f, 	10.0, 10.0,
-				1.0f, 0.0f,  1.0f, 	10.0, 0.0,
-				1.0f, 1.0f,  1.0f, 	0.0, 0.0,
-				1.0f, 0.0f,  0.0f, 	10.0, 10.0,
-				1.0f, 1.0f,  0.0f, 	10.0, 0.0,
-				1.0f, 1.0f,  1.0f, 	0.0, 0.0,
+			}
 
-				0.0f, 0.0f,  0.0f, 	10.0, 10.0,
-				0.0f, 0.0f,  1.0f, 	10.0, 0.0,
-				0.0f, 1.0f,  1.0f, 	0.0, 0.0,
-				0.0f, 0.0f,  0.0f, 	10.0, 10.0,
-				0.0f, 1.0f,  0.0f, 	10.0, 0.0,
-				0.0f, 1.0f,  1.0f, 	0.0, 0.0,
+			std::string line;
+			std::vector<glm::vec3>positions;
+			std::vector<glm::vec2>texcoords;
+			std::vector<GLfloat> vertices;
 
-				0.0f, 0.0f, 0.0f, 	10.0, 10.0,
-				0.0f, 0.0f, 1.0f, 	10.0, 0.0,
-				1.0f, 0.0f, 1.0f, 	0.0, 0.0,
-				0.0f, 0.0f, 0.0f, 	10.0, 10.0,
-				1.0f, 0.0f, 0.0f, 	10.0, 0.0,
-				1.0f, 0.0f, 1.0f, 	0.0, 0.0,
+			while (std::getline(file, line)) {
+				std::istringstream line_stream(line);
 
-				0.0f, 1.0f, 0.0f, 	10.0, 10.0,
-				0.0f, 1.0f, 1.0f, 	10.0, 0.0,
-				1.0f, 1.0f, 1.0f, 	0.0, 0.0,
-				0.0f, 1.0f, 0.0f, 	10.0, 10.0,
-				1.0f, 1.0f, 0.0f, 	10.0, 0.0,
-				1.0f, 1.0f, 1.0f, 	0.0, 0.0,
-			};
+				std::string type;
+				line_stream >> type;
 
-			model.vertex_count = sizeof(vertices) / sizeof(vertices[0]);
+				if (type == "v") {
+					//its a vertex position
+					GLfloat x;
+					GLfloat y;
+					GLfloat z;
+					line_stream >> x;//converts first line into float
+					line_stream >> y;
+					line_stream >> z;
+					positions.push_back(glm::vec3(x, y, z));
+
+				}
+				else if (type == "vt") {
+
+					GLfloat u, v;
+					line_stream >> u;
+					line_stream >> v;
+					texcoords.push_back(glm::vec2(u, v));
+
+					//std::cout << "its a vertex texcoord\n";
+				}
+				else if (type == "f") {
+					//std::cout << "its a face\n";
+					std::string face;
+					for (int i = 0; i < 3; ++i) {
+
+						line_stream >> face;
+
+						std::replace(face.begin(), face.end(), '/', ' ');
+						std::istringstream face_stream(face);
+
+						size_t position_index;
+						size_t texcoord_index;
+
+						face_stream >> position_index;
+						face_stream >> texcoord_index;
+
+						glm::vec3 position = positions.at(position_index - 1);
+						glm::vec2 texcoord = texcoords.at(texcoord_index - 1);
+
+						vertices.push_back(position.x);
+						vertices.push_back(position.y);
+						vertices.push_back(position.z);
+						vertices.push_back(texcoord.x);
+						vertices.push_back(texcoord.y);
+
+
+					}
+
+
+				}
+
+
+			}
+
+
+			{
+
+			model.vertex_count = vertices.size();
 
 			// Use OpenGL to store it on the GPU
 			{
@@ -115,9 +150,11 @@ struct Model {
 				// Tell OpenGL that we want to set this as the current buffer
 				glBindBuffer(GL_ARRAY_BUFFER, model.vbo);
 				// Copy all our data to the current buffer!
-				glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+				glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)* vertices.size(),&vertices[0], GL_STATIC_DRAW);
 			}
+
 		}
+		
 
 		// Tell the GPU how to interpret our existing vertex data
 		{
@@ -448,16 +485,18 @@ int main(void) {
 		glm::vec3(0.0f,0.0f,0.0f)
 		));
 
+	/*
 	particles.push_back(Particle(
 		glm::translate(glm::mat4(1), glm::vec3(1.0f, 0.0f, 0.0f)),
 		glm::vec3(0.0f, 0.0f, 0.0f)
 	));
+	*/
 
 	//calls load geometry and we pass in vao,vbo,and vertex_count by reference
 	
 	Camera camera; // init to the identity matrix
 	camera.camera_from_world = glm::translate(camera.camera_from_world, 
-		glm::vec3(0.0f, 0.0f, -3.0f));
+		glm::vec3(0.0f, 0.0f, -10.0f));
 
 	//need to create a view_from_camera and pass it into the render scene 
 	//and make the view_from camera equal to the function inside the camera struct

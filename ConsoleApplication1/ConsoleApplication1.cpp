@@ -61,11 +61,11 @@ struct Model {
 		glDeleteBuffers(1, &this->vbo);
 	}
 
-	static Model load() {
+	static Model load(std::string objectFileName) {
 		// Send the vertex data to the GPU
-		Model model;
+			Model model;
 
-			std::fstream file("teapot.obj");
+			std::fstream file(objectFileName);
 			if (!file) {
 
 				std::cout << "could not find model file";
@@ -431,23 +431,7 @@ void render_scene(GLFWwindow* window, Model model, GLuint shader_program, Camera
 			GL_FALSE, // transpose
 			glm::value_ptr(particle->world_from_model)
 		);
-
-		/*
-		if (particle->position.x > 1.0) {
-			particle->velocity.x = -abs(particle->velocity.x);
-		}
-		else if (particle->position.x < 0.0) {
-			particle->velocity.x = abs(particle->velocity.x);
-		}
-
-		if (particle->position.y > 1.0) {
-			particle->velocity.y = -abs(particle->velocity.y);
-		}
-		else if(particle->position.y<0.0){
-			particle->velocity.y = abs(particle->velocity.y);
-		}
-		*/
-
+		
 		model.draw();
 
 	}
@@ -471,26 +455,21 @@ int main(void) {
 	GLuint shader_program = compile_shader();
 	GLuint tex = load_textures();
 
-	//these are all uninitialized at thr start but when they are passed into the function then 
+	std::string objectFileName="teapot.obj";
+	std::string objectFileName2 = "cube.obj";
+
+	//these are all uninitialized at the start but when they are passed into the function then 
 	//the values are changed because they are by reference into the functions above.
 
-	load_textures();
-	compile_shader(); //calls compile_shader
-	Model model = Model::load();
+	Model model2 = Model::load(objectFileName2);
+	Model model = Model::load(objectFileName);
 
 	std::vector<Particle>particles;
-	
-	particles.push_back(Particle(
-		glm::translate(glm::mat4(1), glm::vec3(-0.5f,0.0f,0.0f)),
-		glm::vec3(0.0f,0.0f,0.0f)
-		));
 
-	/*
 	particles.push_back(Particle(
-		glm::translate(glm::mat4(1), glm::vec3(1.0f, 0.0f, 0.0f)),
+		glm::translate(glm::mat4(1), glm::vec3(-1.0f, 0.0f, 0.0f)),
 		glm::vec3(0.0f, 0.0f, 0.0f)
 	));
-	*/
 
 	//calls load geometry and we pass in vao,vbo,and vertex_count by reference
 	
@@ -504,8 +483,8 @@ int main(void) {
 	while (!glfwWindowShouldClose(window)) {
 
 		//camera from world is being changed here before it is being passed into the render_scene
-		
-		render_scene(window, model, shader_program,camera,&particles);//calls render scene and passes in window pointer and vertex count
+		render_scene(window, model, shader_program,camera,&particles);
+
 		glfwPollEvents();
 	}
 

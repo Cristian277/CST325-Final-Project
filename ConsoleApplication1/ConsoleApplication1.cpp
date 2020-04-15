@@ -77,6 +77,7 @@ struct Model {
 			std::vector<glm::vec3>positions;
 			std::vector<glm::vec2>texcoords;
 			std::vector<GLfloat> vertices;
+			std::vector<glm::vec3>normals_vec;
 
 			while (std::getline(file, line)) {
 				std::istringstream line_stream(line);
@@ -94,8 +95,17 @@ struct Model {
 					line_stream >> z;
 					positions.push_back(glm::vec3(x, y, z));
 
-				}
-				else if (type == "vt") {
+				} else if (type == "vn") {
+					//its a vertex position
+					GLfloat x;
+					GLfloat y;
+					GLfloat z;
+					line_stream >> x;//converts first line into float
+					line_stream >> y;
+					line_stream >> z;
+					normals_vec.push_back(glm::vec3(x, y, z));
+
+				} else if (type == "vt") {
 
 					GLfloat u, v;
 					line_stream >> u;
@@ -116,18 +126,24 @@ struct Model {
 
 						size_t position_index;
 						size_t texcoord_index;
+						size_t normal_index;
 
 						face_stream >> position_index;
 						face_stream >> texcoord_index;
+						face_stream >> normal_index;
 
 						glm::vec3 position = positions.at(position_index - 1);
 						glm::vec2 texcoord = texcoords.at(texcoord_index - 1);
+						glm::vec3 normals = normals_vec.at(normal_index - 1);
 
 						vertices.push_back(position.x);
 						vertices.push_back(position.y);
 						vertices.push_back(position.z);
 						vertices.push_back(texcoord.x);
 						vertices.push_back(texcoord.y);
+						vertices.push_back(normals.x);
+						vertices.push_back(normals.y);
+						vertices.push_back(normals.z);
 
 
 					}
@@ -164,11 +180,11 @@ struct Model {
 			// Tell OpenGL that we want to set this as the current vertex array
 			glBindVertexArray(model.vao);
 
-			GLsizei stride = 5 * sizeof(GLfloat);
+			GLsizei stride = 8 * sizeof(GLfloat);
 
 			// Tell OpenGL the settings for the current 0th vertex array!
 			glVertexAttribPointer(
-				0, // index
+				0, // INDEX
 				3, // size
 				GL_FLOAT, // type
 				GL_FALSE, // normalized
@@ -178,17 +194,28 @@ struct Model {
 
 
 			// Enable the 0th vertex attrib array!
-			glEnableVertexAttribArray(0);
+			glEnableVertexAttribArray(0); //PUSHING INTO LIST
 
 			glVertexAttribPointer(
-				1, // index
+				1, // INDEX
 				2, // size
 				GL_FLOAT, // type
 				GL_FALSE, // normalized
 				stride, // stride (how far to the next repetition)
 				(void*)(3 * sizeof(GLfloat)) // first component
 			);
-			glEnableVertexAttribArray(1);
+			glEnableVertexAttribArray(1); //PUSHING INTO LIST SECOND
+
+			glVertexAttribPointer(
+				2, // INDEX
+				3, // size
+				GL_FLOAT, // type
+				GL_FALSE, // normalized
+				stride, // stride (how far to the next repetition)
+				(void*)(5 * sizeof(GLfloat)) // first component
+			);
+			glEnableVertexAttribArray(2); //PUSHING INTO LIST THIRD
+
 
 			return model;
 
@@ -236,16 +263,19 @@ GLuint compile_shader() {
 
 	const char* vertex_shader_src =
 		"#version 330 core\n"
-		"layout (location = 0) in vec3 pos;\n"
-		"layout (location = 1) in vec2 texcoords;\n"
+		"layout (location = 0) in vec3 pos;\n" //POSITION IN OUR ATTRIBUTES LOCATION/INDEX 0
+		"layout (location = 1) in vec2 texcoords;\n" //POSITION/INDEX 1
+		"layout (location = 2) in vec3 normal;\n"
 		"out vec2 Texcoords;\n"
+		"out vec3 Normal;\n"
 		"uniform vec2 offset;\n"
 		"uniform mat4 camera_from_world;\n"
 		"uniform mat4 view_from_camera;\n"
 		"uniform mat4 world_from_model;\n"
 
 		"void main() {\n"
-			"Texcoords = texcoords;"
+			"Texcoords = texcoords;\n"
+			"Normal = normal;\n" //sets the vec3 normal to the vec3 normal layout position attribute
 		"   gl_Position = view_from_camera*camera_from_world *world_from_model* vec4(pos,1.0);\n" //1 at the end is for matrix mult
 		"}\n";
 
@@ -258,8 +288,9 @@ GLuint compile_shader() {
 
 		"void main() {\n" //color is the name of the vec 4 (r,g,b,a)
 			
-			"vec2 uvs = vec2(gl_FragCoord) / 100.0;\n"
-			"FragColor = texture(tex, Texcoords);\n"
+			//"vec2 uvs = vec2(gl_FragCoord) / 100.0;\n"
+			"float fog = gl_FragCoord.z/gl_FragCoord.w;"
+			"FragColor = vec4(0.5*(Normal + vec3(1.0)),1.0);\n"
 		"}\n";
 
 	// Define some vars
@@ -455,13 +486,12 @@ int main(void) {
 	GLuint shader_program = compile_shader();
 	GLuint tex = load_textures();
 
-	std::string objectFileName="teapot.obj";
-	std::string objectFileName2 = "cube.obj";
+	std::string objectFileName="teapot-normals.obj";
+	//std::string objectFileName2 = "cube.obj";
 
 	//these are all uninitialized at the start but when they are passed into the function then 
 	//the values are changed because they are by reference into the functions above.
 
-	Model model2 = Model::load(objectFileName2);
 	Model model = Model::load(objectFileName);
 
 	std::vector<Particle>particles;

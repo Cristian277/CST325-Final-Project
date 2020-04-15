@@ -268,6 +268,7 @@ GLuint compile_shader() {
 		"layout (location = 2) in vec3 normal;\n"
 		"out vec2 Texcoords;\n"
 		"out vec3 Normal;\n"
+		"out vec3 world_space_position;\n"
 		"uniform vec2 offset;\n"
 		"uniform mat4 camera_from_world;\n"
 		"uniform mat4 view_from_camera;\n"
@@ -277,6 +278,7 @@ GLuint compile_shader() {
 			"Texcoords = texcoords;\n"
 			"Normal = normal;\n" //sets the vec3 normal to the vec3 normal layout position attribute
 		"   gl_Position = view_from_camera*camera_from_world *world_from_model* vec4(pos,1.0);\n" //1 at the end is for matrix mult
+		"	world_space_position = vec3(world_from_model * vec4(pos,1.0));"
 		"}\n";
 
 	const char* fragment_shader_src =
@@ -284,13 +286,30 @@ GLuint compile_shader() {
 		"out vec4 FragColor;\n"
 		"uniform vec4 color;\n"
 		"in vec2 Texcoords;\n"
+		"in vec3 Normal;\n" //make a in vec3 Normal while the top is out
+		"in vec3 world_space_position;\n"
 		"uniform sampler2D tex;\n"
 
 		"void main() {\n" //color is the name of the vec 4 (r,g,b,a)
 			
+			//Light settings
+			"vec3 light_dir = vec3(1.0,1.0,1.0);\n"
+			"vec3 light_color = vec3(0.4,0.0,0.2);\n"
+			"vec3 normal = normalize(Normal);\n"
+			//Ambient lighting
+			"vec3 ambient = vec3(0.2,0.0,0.2);\n"
+
 			//"vec2 uvs = vec2(gl_FragCoord) / 100.0;\n"
-			"float fog = gl_FragCoord.z/gl_FragCoord.w;"
-			"FragColor = vec4(0.5*(Normal + vec3(1.0)),1.0);\n"
+			//"float fog = gl_FragCoord.z/gl_FragCoord.w;\n"
+			
+			//Diffuse lighting
+			"float diffuse_intensity = dot(normal,light_dir);\n"
+			"vec3 diffuse = diffuse_intensity * light_color;\n"
+			
+			//Final output
+			"FragColor = vec4(ambient + diffuse,1.0);\n"
+			//"FragColor = vec4(0.5 * world_space_position + vec3(1.0),1.0);\n"
+
 		"}\n";
 
 	// Define some vars
@@ -486,7 +505,7 @@ int main(void) {
 	GLuint shader_program = compile_shader();
 	GLuint tex = load_textures();
 
-	std::string objectFileName="teapot-normals.obj";
+	std::string objectFileName="monkey-normals.obj";
 	//std::string objectFileName2 = "cube.obj";
 
 	//these are all uninitialized at the start but when they are passed into the function then 
@@ -505,7 +524,7 @@ int main(void) {
 	
 	Camera camera; // init to the identity matrix
 	camera.camera_from_world = glm::translate(camera.camera_from_world, 
-		glm::vec3(0.0f, 0.0f, -10.0f));
+		glm::vec3(0.0f, 0.0f, -5.0f));
 
 	//need to create a view_from_camera and pass it into the render scene 
 	//and make the view_from camera equal to the function inside the camera struct

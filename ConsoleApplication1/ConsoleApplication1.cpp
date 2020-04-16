@@ -269,6 +269,7 @@ GLuint compile_shader() {
 		"out vec2 Texcoords;\n"
 		"out vec3 Normal;\n"
 		"out vec3 world_space_position;\n"
+		"out vec3 world_space_camera_position;\n"
 		"uniform vec2 offset;\n"
 		"uniform mat4 camera_from_world;\n"
 		"uniform mat4 view_from_camera;\n"
@@ -276,9 +277,11 @@ GLuint compile_shader() {
 
 		"void main() {\n"
 			"Texcoords = texcoords;\n"
-			"Normal = normal;\n" //sets the vec3 normal to the vec3 normal layout position attribute
+			"Normal = mat3(transpose(inverse(world_from_model)))*normal;\n" //sets the vec3 normal to the vec3 normal layout position attribute
 		"   gl_Position = view_from_camera*camera_from_world *world_from_model* vec4(pos,1.0);\n" //1 at the end is for matrix mult
 		"	world_space_position = vec3(world_from_model * vec4(pos,1.0));"
+		"	mat4 world_from_camera = inverse(camera_from_world);\n"
+		"	world_space_camera_position = vec3(world_from_camera * vec4(0.0,0.0,0.0,1.0));\n"
 		"}\n";
 
 	const char* fragment_shader_src =
@@ -288,6 +291,7 @@ GLuint compile_shader() {
 		"in vec2 Texcoords;\n"
 		"in vec3 Normal;\n" //make a in vec3 Normal while the top is out
 		"in vec3 world_space_position;\n"
+		"in vec3 world_space_camera_position;\n"
 		"uniform sampler2D tex;\n"
 
 		"void main() {\n" //color is the name of the vec 4 (r,g,b,a)
@@ -295,7 +299,9 @@ GLuint compile_shader() {
 			//Light settings
 			"vec3 light_dir = vec3(1.0,1.0,1.0);\n"
 			"vec3 light_color = vec3(0.4,0.0,0.2);\n"
+			"vec3 specular_color = 0.2 * vec3(1.0,1.0,1.0);\n"
 			"vec3 normal = normalize(Normal);\n"
+
 			//Ambient lighting
 			"vec3 ambient = vec3(0.2,0.0,0.2);\n"
 
@@ -303,11 +309,18 @@ GLuint compile_shader() {
 			//"float fog = gl_FragCoord.z/gl_FragCoord.w;\n"
 			
 			//Diffuse lighting
-			"float diffuse_intensity = dot(normal,light_dir);\n"
+			"float diffuse_intensity = max(dot(normal,light_dir),0.0);\n" //doesn't take negative numbers
 			"vec3 diffuse = diffuse_intensity * light_color;\n"
 			
+			//Specular lighting
+
+			"vec3 view_dir = normalize(world_space_camera_position - world_space_position);\n"
+			"vec3 reflect_direction = reflect(-light_dir,normal);\n"
+			"float specular_intensity = pow(max(dot(view_dir,reflect_direction),0.0),4.0);\n"
+			"vec3 specular = specular_intensity * specular_color;\n"
+
 			//Final output
-			"FragColor = vec4(ambient + diffuse,1.0);\n"
+			"FragColor = vec4(ambient + diffuse + specular,1.0);\n"
 			//"FragColor = vec4(0.5 * world_space_position + vec3(1.0),1.0);\n"
 
 		"}\n";
@@ -516,7 +529,7 @@ int main(void) {
 	std::vector<Particle>particles;
 
 	particles.push_back(Particle(
-		glm::translate(glm::mat4(1), glm::vec3(-1.0f, 0.0f, 0.0f)),
+		glm::translate(glm::mat4(1), glm::vec3(0.0f, 0.0f, 0.0f)),
 		glm::vec3(0.0f, 0.0f, 0.0f)
 	));
 
@@ -524,7 +537,7 @@ int main(void) {
 	
 	Camera camera; // init to the identity matrix
 	camera.camera_from_world = glm::translate(camera.camera_from_world, 
-		glm::vec3(0.0f, 0.0f, -5.0f));
+		glm::vec3(0.0f, 0.0f, -3.0f));
 
 	//need to create a view_from_camera and pass it into the render scene 
 	//and make the view_from camera equal to the function inside the camera struct

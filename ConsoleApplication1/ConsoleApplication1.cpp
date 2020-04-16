@@ -26,7 +26,7 @@ GLFWwindow* initialize_glfw() {
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	// Create the window
-	GLFWwindow* window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL); //setting the window pointer to be width 640, height 480, and title hello world
+	GLFWwindow* window = glfwCreateWindow(640, 480, "Hello World >:)", NULL, NULL); //setting the window pointer to be width 640, height 480, and title hello world
 	if (!window) {
 		std::cout << "glfwCreateWindow(...) failed\n";
 		glfwTerminate();
@@ -148,9 +148,7 @@ struct Model {
 
 					}
 
-
 				}
-
 
 			}
 
@@ -224,8 +222,6 @@ struct Model {
 
 
 };
-
-
 struct Camera {
 
 	glm::mat4 camera_from_world = glm::mat4(1);
@@ -276,8 +272,8 @@ GLuint compile_shader() {
 		"uniform mat4 world_from_model;\n"
 
 		"void main() {\n"
-			"Texcoords = texcoords;\n"
-			"Normal = mat3(transpose(inverse(world_from_model)))*normal;\n" //sets the vec3 normal to the vec3 normal layout position attribute
+		"	Texcoords = texcoords;\n"
+		"	Normal = mat3(transpose(inverse(world_from_model)))*normal;\n" //sets the vec3 normal to the vec3 normal layout position attribute
 		"   gl_Position = view_from_camera*camera_from_world *world_from_model* vec4(pos,1.0);\n" //1 at the end is for matrix mult
 		"	world_space_position = vec3(world_from_model * vec4(pos,1.0));"
 		"	mat4 world_from_camera = inverse(camera_from_world);\n"
@@ -295,34 +291,34 @@ GLuint compile_shader() {
 		"uniform sampler2D tex;\n"
 
 		"void main() {\n" //color is the name of the vec 4 (r,g,b,a)
-			
+
 			//Light settings
-			"vec3 light_dir = vec3(1.0,1.0,1.0);\n"
-			"vec3 light_color = vec3(0.4,0.0,0.2);\n"
-			"vec3 specular_color = 0.2 * vec3(1.0,1.0,1.0);\n"
-			"vec3 normal = normalize(Normal);\n"
+		"vec3 light_dir = vec3(1.0,1.0,1.0);\n"
+		"vec3 light_color = vec3(0.4,0.0,0.2);\n"
+		"vec3 specular_color = 0.2 * vec3(1.0,1.0,1.0);\n"
+		"vec3 normal = normalize(Normal);\n"
 
-			//Ambient lighting
-			"vec3 ambient = vec3(0.2,0.0,0.2);\n"
+		//Ambient lighting
+		"vec3 ambient = vec3(0.2,0.0,0.2);\n"
 
-			//"vec2 uvs = vec2(gl_FragCoord) / 100.0;\n"
-			//"float fog = gl_FragCoord.z/gl_FragCoord.w;\n"
+		//"vec2 uvs = vec2(gl_FragCoord) / 100.0;\n"
+		//"float fog = gl_FragCoord.z/gl_FragCoord.w;\n"
+
+		//Diffuse lighting
+		"float diffuse_intensity = max(dot(normal,light_dir),0.0);\n" //doesn't take negative numbers
+		"vec3 diffuse = diffuse_intensity * light_color;\n"
+
+		//Specular lighting
+
+		"vec3 view_dir = normalize(world_space_camera_position - world_space_position);\n"
+		"vec3 reflect_direction = reflect(-light_dir,normal);\n"
+		"float specular_intensity = pow(max(dot(view_dir,reflect_direction),0.0),4.0);\n"
+		"vec3 specular = specular_intensity * specular_color;\n"
+
 			
-			//Diffuse lighting
-			"float diffuse_intensity = max(dot(normal,light_dir),0.0);\n" //doesn't take negative numbers
-			"vec3 diffuse = diffuse_intensity * light_color;\n"
-			
-			//Specular lighting
-
-			"vec3 view_dir = normalize(world_space_camera_position - world_space_position);\n"
-			"vec3 reflect_direction = reflect(-light_dir,normal);\n"
-			"float specular_intensity = pow(max(dot(view_dir,reflect_direction),0.0),4.0);\n"
-			"vec3 specular = specular_intensity * specular_color;\n"
-
-			//Final output
-			"FragColor = vec4(ambient + diffuse + specular,1.0);\n"
-			//"FragColor = vec4(0.5 * world_space_position + vec3(1.0),1.0);\n"
-
+		//Final output
+		"FragColor = vec4(ambient + diffuse + specular,1.0);\n"
+		//"FragColor = vec4(0.5 * world_space_position + vec3(1.0),1.0);\n"
 		"}\n";
 
 	// Define some vars
@@ -484,7 +480,7 @@ void render_scene(GLFWwindow* window, Model model, GLuint shader_program, Camera
 		particle->world_from_model=glm::rotate(
 			particle->world_from_model,
 			0.001f,
-			glm::vec3(1.0f, 1.0f, 0.0f)
+			glm::vec3(0.0f, 1.0f, 0.0f)
 		);
 
 		GLint world_from_model_location = glGetUniformLocation(shader_program, "world_from_model");
@@ -518,7 +514,7 @@ int main(void) {
 	GLuint shader_program = compile_shader();
 	GLuint tex = load_textures();
 
-	std::string objectFileName="monkey-normals.obj";
+	std::string objectFileName="1967-shelby-ford-mustang.obj";
 	//std::string objectFileName2 = "cube.obj";
 
 	//these are all uninitialized at the start but when they are passed into the function then 
@@ -537,7 +533,7 @@ int main(void) {
 	
 	Camera camera; // init to the identity matrix
 	camera.camera_from_world = glm::translate(camera.camera_from_world, 
-		glm::vec3(0.0f, 0.0f, -3.0f));
+		glm::vec3(0.0f, -1.0f, -10.0f));
 
 	//need to create a view_from_camera and pass it into the render scene 
 	//and make the view_from camera equal to the function inside the camera struct

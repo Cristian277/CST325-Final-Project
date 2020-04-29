@@ -288,37 +288,38 @@ GLuint compile_shader() {
 		"in vec3 Normal;\n" //make a in vec3 Normal while the top is out
 		"in vec3 world_space_position;\n"
 		"in vec3 world_space_camera_position;\n"
-		"uniform sampler2D tex;\n"
+
+		"uniform sampler2D diffuse_map;\n"
+		"uniform sampler2D specular_map;\n"
 
 		"void main() {\n" //color is the name of the vec 4 (r,g,b,a)
 
-			//Light settings
+		//Light settings
+		"vec3 ambient = vec3(0.25,0.1,0.2);\n"
 		"vec3 light_dir = vec3(1.0,1.0,1.0);\n"
-		"vec3 light_color = vec3(0.4,0.0,0.2);\n"
-		"vec3 specular_color = 0.2 * vec3(1.0,1.0,1.0);\n"
+		"vec3 light_color = 0.8*vec3(0.6,0.6,0.6)-ambient*0.5;\n"
+		//"vec3 specular_color = vec3(1.0,1.0,1.0);\n"
+		"vec3 specular_color = 0.1*0.4 * vec3(1.0,1.0,1.0);\n"
 		"vec3 normal = normalize(Normal);\n"
-
-		//Ambient lighting
-		"vec3 ambient = vec3(0.2,0.0,0.2);\n"
 
 		//"vec2 uvs = vec2(gl_FragCoord) / 100.0;\n"
 		//"float fog = gl_FragCoord.z/gl_FragCoord.w;\n"
 
 		//Diffuse lighting
 		"float diffuse_intensity = max(dot(normal,light_dir),0.0);\n" //doesn't take negative numbers
-		"vec3 diffuse = diffuse_intensity * light_color;\n"
+		"vec3 diffuse_map_color = vec3(texture(specular_map, Texcoords));\n"
+		"vec3 diffuse = diffuse_map_color*diffuse_intensity*light_color;\n"
 
 		//Specular lighting
-
 		"vec3 view_dir = normalize(world_space_camera_position - world_space_position);\n"
 		"vec3 reflect_direction = reflect(-light_dir,normal);\n"
-		"float specular_intensity = pow(max(dot(view_dir,reflect_direction),0.0),4.0);\n"
+		"float specular_intensity = pow(max(dot(view_dir,reflect_direction),0.0),1.5);\n" 
+		"specular_intensity*=(1.0-texture(specular_map,Texcoords).r);\n"
 		"vec3 specular = specular_intensity * specular_color;\n"
 
-			
 		//Final output
-		"FragColor = vec4(ambient + diffuse + specular,1.0);\n"
-		//"FragColor = vec4(0.5 * world_space_position + vec3(1.0),1.0);\n"
+		"FragColor = vec4(ambient+diffuse+specular,1.0);\n"
+
 		"}\n";
 
 	// Define some vars
@@ -380,33 +381,31 @@ GLuint compile_shader() {
 //template 
 
 
-GLuint load_textures(){
+GLuint load_textures(GLenum active_texture, const char *filename){
 
-	glActiveTexture(GL_TEXTURE0);
+	GLuint tex;
 
-	unsigned int texture;
-
-	glGenTextures(1, &texture);
-	glBindTexture(GL_TEXTURE_2D, texture);
+	glGenTextures(1, &tex);
+	glActiveTexture(active_texture);
+	glBindTexture(GL_TEXTURE_2D, tex);
 	// set the texture wrapping/filtering options (on the currently bound texture object)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	
 	// load and generate the texture
-	int width, height, nrChannels;
-	unsigned char* data = stbi_load("distressed-texture-2.jpg", &width, &height, &nrChannels, 0);
-	if (data)
-	{
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-		glGenerateMipmap(GL_TEXTURE_2D);
+	int width = 0;
+	int height = 0;
+	GLubyte* pixels = stbi_load(filename, &width, &height, NULL, 3);
+	
+	if (pixels == NULL || width == 0 || height == 0) {
+		abort();
 	}
-	else
-	{
-		std::cout << "Failed to load texture" << std::endl;
-	}
-	stbi_image_free(data);
-
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+	
+	/*
 	float vertices[] = {
 		// positions          // colors           // texture coords
 		 0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
@@ -417,8 +416,9 @@ GLuint load_textures(){
 
 	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
 	glEnableVertexAttribArray(2);
+	*/
 
-	return texture;
+	return tex;
 }
 
 void render_scene(GLFWwindow* window, Model model, GLuint shader_program, Camera camera, std::vector<Particle>*particles) {
@@ -450,7 +450,13 @@ void render_scene(GLFWwindow* window, Model model, GLuint shader_program, Camera
 	GLint color_location = glGetUniformLocation(shader_program, "color");
 	GLint offset_location = glGetUniformLocation(shader_program, "offset");
 	GLint texture_location = glGetUniformLocation(shader_program, "sampler2Dtex");
-	GLuint tex_location = glGetUniformLocation(shader_program, "tex");
+	
+	GLuint diffuse_map_location = glGetUniformLocation(shader_program, "diffuse_map");
+	glUniform1i(diffuse_map_location, 0); //load texture in gl_texture0
+
+	GLuint specular_map_location = glGetUniformLocation(shader_program, "specular_map");
+	glUniform1i(specular_map_location, 1);
+
 	GLint view_from_camera_location = glGetUniformLocation(shader_program, "view_from_camera"); //newest location
 
 	//4x4 matrix filled with floats
@@ -500,9 +506,9 @@ void render_scene(GLFWwindow* window, Model model, GLuint shader_program, Camera
 
 }
 
-void cleanup(GLuint shader_program, Model model, GLuint tex) {//takes in window pointer into the argument
+void cleanup(GLuint shader_program, Model model, std::vector<GLuint> *tex) {//takes in window pointer into the argument
 	// Call glfw terminate here
-	glDeleteTextures(1, &tex);
+	glDeleteTextures(tex->size(),&(*tex)[0]);
 	glDeleteProgram(shader_program);
 	model.cleanup();
 	glfwTerminate(); //this terminates the glfw library after we are done
@@ -512,7 +518,11 @@ int main(void) {
 
 	GLFWwindow* window = initialize_glfw(); //a pointer object for window that equals the glfw function
 	GLuint shader_program = compile_shader();
-	GLuint tex = load_textures();
+
+	std::vector<GLuint> textures;
+
+	textures.push_back(load_textures(GL_TEXTURE0,"Marble006_2K_Roughness.jpg"));
+	textures.push_back(load_textures(GL_TEXTURE1, "distressed-texture-2.jpg"));
 
 	std::string objectFileName="1967-shelby-ford-mustang.obj";
 	//std::string objectFileName2 = "cube.obj";
@@ -546,7 +556,7 @@ int main(void) {
 		glfwPollEvents();
 	}
 
-	cleanup(shader_program,model,tex);
+	cleanup(shader_program,model,&textures);
 
 	return 0;
 }

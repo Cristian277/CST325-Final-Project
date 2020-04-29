@@ -117,36 +117,78 @@ struct Model {
 				else if (type == "f") {
 					//std::cout << "its a face\n";
 					std::string face;
-					for (int i = 0; i < 3; ++i) {
 
 						line_stream >> face;
-
 						std::replace(face.begin(), face.end(), '/', ' ');
-						std::istringstream face_stream(face);
+						std::istringstream face_stream0(face);
 
-						size_t position_index;
-						size_t texcoord_index;
-						size_t normal_index;
+						size_t position_index0;
+						size_t texcoord_index0;
+						size_t normal_index0;
+						face_stream0 >> position_index0;
+						face_stream0 >> texcoord_index0;
+						face_stream0 >> normal_index0;
 
-						face_stream >> position_index;
-						face_stream >> texcoord_index;
-						face_stream >> normal_index;
+						glm::vec3 position0 = positions.at(position_index0 - 1);
+						glm::vec2 texcoord0 = texcoords.at(texcoord_index0 - 1);
+						glm::vec3 normals0 = normals_vec.at(normal_index0 - 1);
 
-						glm::vec3 position = positions.at(position_index - 1);
-						glm::vec2 texcoord = texcoords.at(texcoord_index - 1);
-						glm::vec3 normals = normals_vec.at(normal_index - 1);
+						line_stream >> face;
+						std::replace(face.begin(), face.end(), '/', ' ');
+						std::istringstream face_stream1(face);
 
-						vertices.push_back(position.x);
-						vertices.push_back(position.y);
-						vertices.push_back(position.z);
-						vertices.push_back(texcoord.x);
-						vertices.push_back(texcoord.y);
-						vertices.push_back(normals.x);
-						vertices.push_back(normals.y);
-						vertices.push_back(normals.z);
+						size_t position_index1;
+						size_t texcoord_index1;
+						size_t normal_index1;
+						face_stream1 >> position_index1;
+						face_stream1 >> texcoord_index1;
+						face_stream1 >> normal_index1;
 
+						glm::vec3 position1 = positions.at(position_index1 - 1);
+						glm::vec2 texcoord1 = texcoords.at(texcoord_index1 - 1);
+						glm::vec3 normals1 = normals_vec.at(normal_index1 - 1);
 
-					}
+						line_stream >> face;
+						std::replace(face.begin(), face.end(), '/', ' ');
+						std::istringstream face_stream2(face);
+
+						size_t position_index2;
+						size_t texcoord_index2;
+						size_t normal_index2;
+						face_stream2 >> position_index2;
+						face_stream2 >> texcoord_index2;
+						face_stream2 >> normal_index2;
+
+						glm::vec3 position2 = positions.at(position_index2 - 1);
+						glm::vec2 texcoord2 = texcoords.at(texcoord_index2 - 1);
+						glm::vec3 normals2 = normals_vec.at(normal_index2 - 1);
+
+						vertices.push_back(position0.x);
+						vertices.push_back(position0.y);
+						vertices.push_back(position0.z);
+						vertices.push_back(texcoord0.x);
+						vertices.push_back(texcoord0.y);
+						vertices.push_back(normals0.x);
+						vertices.push_back(normals0.y);
+						vertices.push_back(normals0.z);
+
+						vertices.push_back(position1.x);
+						vertices.push_back(position1.y);
+						vertices.push_back(position1.z);
+						vertices.push_back(texcoord1.x);
+						vertices.push_back(texcoord1.y);
+						vertices.push_back(normals1.x);
+						vertices.push_back(normals1.y);
+						vertices.push_back(normals1.z);
+
+						vertices.push_back(position2.x);
+						vertices.push_back(position2.y);
+						vertices.push_back(position2.z);
+						vertices.push_back(texcoord2.x);
+						vertices.push_back(texcoord2.y);
+						vertices.push_back(normals2.x);
+						vertices.push_back(normals2.y);
+						vertices.push_back(normals2.z);
 
 				}
 
@@ -291,6 +333,7 @@ GLuint compile_shader() {
 
 		"uniform sampler2D diffuse_map;\n"
 		"uniform sampler2D specular_map;\n"
+		"uniform sampler2D normal_map;\n"
 
 		"void main() {\n" //color is the name of the vec 4 (r,g,b,a)
 
@@ -299,8 +342,11 @@ GLuint compile_shader() {
 		"vec3 light_dir = vec3(1.0,1.0,1.0);\n"
 		"vec3 light_color = 0.8*vec3(0.6,0.6,0.6)-ambient*0.5;\n"
 		//"vec3 specular_color = vec3(1.0,1.0,1.0);\n"
-		"vec3 specular_color = 0.1*0.4 * vec3(1.0,1.0,1.0);\n"
-		"vec3 normal = normalize(Normal);\n"
+		"vec3 specular_color = 0.4 * vec3(1.0,1.0,1.0);\n"
+
+		"vec3 normal = vec3(texture(normal_map,Texcoords));\n"
+		"normal = normal * 2.0 - 1.0;\n"
+		"normal = normalize(normal);\n"
 
 		//"vec2 uvs = vec2(gl_FragCoord) / 100.0;\n"
 		//"float fog = gl_FragCoord.z/gl_FragCoord.w;\n"
@@ -319,7 +365,7 @@ GLuint compile_shader() {
 
 		//Final output
 		"FragColor = vec4(ambient+diffuse+specular,1.0);\n"
-
+		//"FragColor = vec4((Normal+1.0)/2.0,1.0);\n"
 		"}\n";
 
 	// Define some vars
@@ -457,6 +503,9 @@ void render_scene(GLFWwindow* window, Model model, GLuint shader_program, Camera
 	GLuint specular_map_location = glGetUniformLocation(shader_program, "specular_map");
 	glUniform1i(specular_map_location, 1);
 
+	GLuint normal_map_location = glGetUniformLocation(shader_program, "normal_map");
+	glUniform1i(normal_map_location, 2);
+
 	GLint view_from_camera_location = glGetUniformLocation(shader_program, "view_from_camera"); //newest location
 
 	//4x4 matrix filled with floats
@@ -521,8 +570,9 @@ int main(void) {
 
 	std::vector<GLuint> textures;
 
-	textures.push_back(load_textures(GL_TEXTURE0,"Marble006_2K_Roughness.jpg"));
-	textures.push_back(load_textures(GL_TEXTURE1, "distressed-texture-2.jpg"));
+	textures.push_back(load_textures(GL_TEXTURE0,"Bricks022_2K_Roughness.jpg"));
+	textures.push_back(load_textures(GL_TEXTURE1, "Bricks022_2K_Color.jpg"));
+	textures.push_back(load_textures(GL_TEXTURE2, "Bricks022_2K_Normal.jpg"));
 
 	std::string objectFileName="1967-shelby-ford-mustang.obj";
 	//std::string objectFileName2 = "cube.obj";

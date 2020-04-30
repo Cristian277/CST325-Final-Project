@@ -163,6 +163,28 @@ struct Model {
 						glm::vec2 texcoord2 = texcoords.at(texcoord_index2 - 1);
 						glm::vec3 normals2 = normals_vec.at(normal_index2 - 1);
 
+						glm::vec3 edge0 = position1 - position0;
+						glm::vec3 edge1 = position2 - position0;
+						glm::vec2 delta_texcoords0 = texcoord1 - texcoord0;
+						glm::vec2 delta_texcoords1 = texcoord2 - texcoord0;
+
+						float f = 1.0f / (delta_texcoords0.x * delta_texcoords1.y - delta_texcoords1.x * delta_texcoords0.y);
+
+						glm::vec3 tangent;
+						tangent.x = f * (delta_texcoords1.y * edge0.x - delta_texcoords0.y * edge1.x);
+						tangent.y = f * (delta_texcoords1.y * edge0.y - delta_texcoords0.y * edge1.y);
+						tangent.z = f * (delta_texcoords1.y * edge0.z - delta_texcoords0.y * edge1.z);
+						tangent = glm::normalize(tangent);
+
+
+						glm::vec3 bitangent;
+						bitangent.x = f * (-delta_texcoords1.x * edge0.x - delta_texcoords0.x * edge1.x);
+						bitangent.y = f * (-delta_texcoords1.x * edge0.y - delta_texcoords0.x * edge1.y);
+						bitangent.z = f * (-delta_texcoords1.x * edge0.z - delta_texcoords0.x * edge1.z);
+						bitangent = glm::normalize(bitangent);
+
+
+						//1
 						vertices.push_back(position0.x);
 						vertices.push_back(position0.y);
 						vertices.push_back(position0.z);
@@ -172,6 +194,14 @@ struct Model {
 						vertices.push_back(normals0.y);
 						vertices.push_back(normals0.z);
 
+						vertices.push_back(tangent.x);
+						vertices.push_back(tangent.y);
+						vertices.push_back(tangent.z);
+						vertices.push_back(bitangent.x);
+						vertices.push_back(bitangent.y);
+						vertices.push_back(bitangent.z);
+
+						//2
 						vertices.push_back(position1.x);
 						vertices.push_back(position1.y);
 						vertices.push_back(position1.z);
@@ -181,6 +211,14 @@ struct Model {
 						vertices.push_back(normals1.y);
 						vertices.push_back(normals1.z);
 
+						vertices.push_back(tangent.x);
+						vertices.push_back(tangent.y);
+						vertices.push_back(tangent.z);
+						vertices.push_back(bitangent.x);
+						vertices.push_back(bitangent.y);
+						vertices.push_back(bitangent.z);
+
+						//3
 						vertices.push_back(position2.x);
 						vertices.push_back(position2.y);
 						vertices.push_back(position2.z);
@@ -190,10 +228,16 @@ struct Model {
 						vertices.push_back(normals2.y);
 						vertices.push_back(normals2.z);
 
+						vertices.push_back(tangent.x);
+						vertices.push_back(tangent.y);
+						vertices.push_back(tangent.z);
+						vertices.push_back(bitangent.x);
+						vertices.push_back(bitangent.y);
+						vertices.push_back(bitangent.z);
+
 				}
 
 			}
-
 
 			{
 
@@ -220,7 +264,7 @@ struct Model {
 			// Tell OpenGL that we want to set this as the current vertex array
 			glBindVertexArray(model.vao);
 
-			GLsizei stride = 8 * sizeof(GLfloat);
+			GLsizei stride = 14 * sizeof(GLfloat);
 
 			// Tell OpenGL the settings for the current 0th vertex array!
 			glVertexAttribPointer(
@@ -256,6 +300,27 @@ struct Model {
 			);
 			glEnableVertexAttribArray(2); //PUSHING INTO LIST THIRD
 
+			//tangent
+			glVertexAttribPointer(
+				3, // INDEX
+				3, // size
+				GL_FLOAT, // type
+				GL_FALSE, // normalized
+				stride, // stride (how far to the next repetition)
+				(void*)(8 * sizeof(GLfloat)) // first component
+			);
+			glEnableVertexAttribArray(3);
+
+			//bitangent
+			glVertexAttribPointer(
+				4, // INDEX
+				3, // size
+				GL_FLOAT, // type
+				GL_FALSE, // normalized
+				stride, // stride (how far to the next repetition)
+				(void*)(11 * sizeof(GLfloat)) // first component
+			);
+			glEnableVertexAttribArray(4);
 
 			return model;
 
@@ -301,11 +366,16 @@ GLuint compile_shader() {
 
 	const char* vertex_shader_src =
 		"#version 330 core\n"
+
 		"layout (location = 0) in vec3 pos;\n" //POSITION IN OUR ATTRIBUTES LOCATION/INDEX 0
 		"layout (location = 1) in vec2 texcoords;\n" //POSITION/INDEX 1
 		"layout (location = 2) in vec3 normal;\n"
+		"layout (location = 3) in vec3 tangent;\n"
+		"layout (location = 4) in vec3 bitangent;\n"
+
 		"out vec2 Texcoords;\n"
 		"out vec3 Normal;\n"
+		"out mat3 TBN;\n"
 		"out vec3 world_space_position;\n"
 		"out vec3 world_space_camera_position;\n"
 		"uniform vec2 offset;\n"
@@ -320,12 +390,21 @@ GLuint compile_shader() {
 		"	world_space_position = vec3(world_from_model * vec4(pos,1.0));"
 		"	mat4 world_from_camera = inverse(camera_from_world);\n"
 		"	world_space_camera_position = vec3(world_from_camera * vec4(0.0,0.0,0.0,1.0));\n"
+
+		"vec3 T = normalize(vec3(world_from_model * vec4(tangent,0.0f)));\n"
+		"vec3 B = normalize(vec3(world_from_model * vec4(bitangent,0.0f)));\n"
+		"vec3 N = normalize(vec3(world_from_model * vec4(normal,0.0f)));\n"
+
+		"TBN=mat3(T,B,N);\n"
+
+
 		"}\n";
 
 	const char* fragment_shader_src =
 		"#version 330 core\n"
 		"out vec4 FragColor;\n"
 		"uniform vec4 color;\n"
+		"in mat3 TBN;\n"
 		"in vec2 Texcoords;\n"
 		"in vec3 Normal;\n" //make a in vec3 Normal while the top is out
 		"in vec3 world_space_position;\n"
@@ -345,7 +424,9 @@ GLuint compile_shader() {
 		"vec3 specular_color = 0.4 * vec3(1.0,1.0,1.0);\n"
 
 		"vec3 normal = vec3(texture(normal_map,Texcoords));\n"
+
 		"normal = normal * 2.0 - 1.0;\n"
+		"normal = TBN * normal;\n"
 		"normal = normalize(normal);\n"
 
 		//"vec2 uvs = vec2(gl_FragCoord) / 100.0;\n"
@@ -450,7 +531,7 @@ GLuint load_textures(GLenum active_texture, const char *filename){
 		abort();
 	}
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, pixels);
-	
+	glGenerateMipmap(GL_TEXTURE_2D);
 	/*
 	float vertices[] = {
 		// positions          // colors           // texture coords

@@ -1,0 +1,6 @@
+
+Completed all Primary Objectives
+
+Diffuse Map
+Specular Map
+Normal Map

@@ -618,6 +618,7 @@ void render_scene(GLFWwindow* window, Model model, GLuint shader_program, Camera
 			0.001f,
 			glm::vec3(0.0f, 1.0f, 0.0f)
 		);
+		
 
 		GLint world_from_model_location = glGetUniformLocation(shader_program, "world_from_model");
 		glUniformMatrix4fv(
@@ -651,12 +652,11 @@ int main(void) {
 
 	std::vector<GLuint> textures;
 
-	textures.push_back(load_textures(GL_TEXTURE0,"Bricks022_2K_Roughness.jpg"));
-	textures.push_back(load_textures(GL_TEXTURE1, "Bricks022_2K_Color.jpg"));
-	textures.push_back(load_textures(GL_TEXTURE2, "Bricks022_2K_Normal.jpg"));
+	textures.push_back(load_textures(GL_TEXTURE0,"Metal_Plate_042_roughness.jpg"));
+	textures.push_back(load_textures(GL_TEXTURE1, "Metal_Plate_042_basecolor.jpg"));
+	textures.push_back(load_textures(GL_TEXTURE2, "Metal_Plate_042_normal.jpg"));
 
-	std::string objectFileName="1967-shelby-ford-mustang.obj";
-	//std::string objectFileName2 = "cube.obj";
+	std::string objectFileName="helicopter.obj";
 
 	//these are all uninitialized at the start but when they are passed into the function then 
 	//the values are changed because they are by reference into the functions above.
@@ -665,16 +665,14 @@ int main(void) {
 
 	std::vector<Particle>particles;
 
-	particles.push_back(Particle(
-		glm::translate(glm::mat4(1), glm::vec3(0.0f, 0.0f, 0.0f)),
-		glm::vec3(0.0f, 0.0f, 0.0f)
-	));
-
-	//calls load geometry and we pass in vao,vbo,and vertex_count by reference
+		particles.push_back(Particle(
+			glm::translate(glm::mat4(1), glm::vec3(0.0f, 0.0f, 0.0f)),
+			glm::vec3(0.0f, 0.0f, 0.0f)
+		));
 	
-	Camera camera; // init to the identity matrix
-	camera.camera_from_world = glm::translate(camera.camera_from_world, 
-		glm::vec3(0.0f, -1.0f, -10.0f));
+	Camera camera;
+		camera.camera_from_world = glm::translate(camera.camera_from_world,
+			glm::vec3(0.0f, -1.5f, -120.0f));
 
 	//need to create a view_from_camera and pass it into the render scene 
 	//and make the view_from camera equal to the function inside the camera struct

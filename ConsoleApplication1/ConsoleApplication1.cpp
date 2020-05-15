@@ -426,15 +426,8 @@ GLuint compile_shader(const char* vertex_filename, const char* fragment_filename
 	glDeleteShader(vertex_shader); //deletes vertex and fragment shaders 
 	glDeleteShader(fragment_shader);
 
-	// Enable the shader program here since we only have one
-	glUseProgram(shader_program);
-
 	return shader_program;
 }
-
-
-//we could use the uniforms here to create the offset while still using the same triangle
-//template 
 
 
 GLuint load_textures(GLenum active_texture, const char* filename) {
@@ -465,7 +458,103 @@ GLuint load_textures(GLenum active_texture, const char* filename) {
 	return tex;
 }
 
-void render_scene(GLFWwindow* window, Model model, GLuint shader_program, Camera camera, std::vector<Particle>* particles) {
+GLuint load_cubemap(
+	GLenum active_texture, 
+	const char* left,
+	const char* front,
+	const char* right,
+	const char* back,
+	const char* top,
+	const char* bottom
+	) {
+
+	GLuint tex;
+
+	glGenTextures(1, &tex);
+	glActiveTexture(active_texture);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, tex);
+
+	// set the texture wrapping/filtering options (on the currently bound texture object)
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	{
+		int width = 0;
+		int height = 0;
+		GLubyte* pixels = stbi_load(right, &width, &height, NULL, 3);
+
+		if (pixels == NULL || width == 0 || height == 0) {
+			abort();
+		}
+		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+		
+	}
+
+	{
+		int width = 0;
+		int height = 0;
+		GLubyte* pixels = stbi_load(left, &width, &height, NULL, 3);
+
+		if (pixels == NULL || width == 0 || height == 0) {
+			abort();
+		}
+		glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+		
+	}
+
+	{
+		int width = 0;
+		int height = 0;
+		GLubyte* pixels = stbi_load(top, &width, &height, NULL, 3);
+
+		if (pixels == NULL || width == 0 || height == 0) {
+			abort();
+		}
+		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+	}
+
+	{
+		int width = 0;
+		int height = 0;
+		GLubyte* pixels = stbi_load(bottom, &width, &height, NULL, 3);
+
+		if (pixels == NULL || width == 0 || height == 0) {
+			abort();
+		}
+		glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+	}
+
+	{
+		int width = 0;
+		int height = 0;
+		GLubyte* pixels = stbi_load(front, &width, &height, NULL, 3);
+
+		if (pixels == NULL || width == 0 || height == 0) {
+			abort();
+		}
+		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+	}
+
+	{
+		int width = 0;
+		int height = 0;
+		GLubyte* pixels = stbi_load(back, &width, &height, NULL, 3);
+
+		if (pixels == NULL || width == 0 || height == 0) {
+			abort();
+		}
+		glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+	}
+
+
+	return tex;
+}
+
+void render_scene(GLFWwindow* window, Model model, GLuint shader_program, GLuint sky_shader_program, Camera camera, std::vector<Particle>* particles) {
 
 	static float red = 0.0f;
 	static float dir = 1.0f;
@@ -489,6 +578,68 @@ void render_scene(GLFWwindow* window, Model model, GLuint shader_program, Camera
 	if (red < 0.0) {
 		dir = 1.0;
 	}
+	glDepthMask(GL_FALSE);
+	{
+		glUseProgram(sky_shader_program);
+
+		GLint sky_box_location = glGetUniformLocation(sky_shader_program, "skybox");
+		glUniform1i(sky_box_location, 3);
+
+		GLint world_to_camera_location = glGetUniformLocation(sky_shader_program, "camera_from_world");
+		GLint color_location = glGetUniformLocation(sky_shader_program, "color");
+		GLint offset_location = glGetUniformLocation(sky_shader_program, "offset");
+		GLint texture_location = glGetUniformLocation(sky_shader_program, "sampler2Dtex");
+
+		GLint view_from_camera_location = glGetUniformLocation(sky_shader_program, "view_from_camera"); //newest location
+
+		glm::mat4 camera_from_world_no_translation = glm::mat4(glm::mat3(camera.camera_from_world));
+		glUniformMatrix4fv(
+			world_to_camera_location,
+			1, // count
+			GL_FALSE, // transpose
+			glm::value_ptr(camera_from_world_no_translation)
+		);
+
+		glUniformMatrix4fv(
+			view_from_camera_location,
+			1, // count
+			GL_FALSE, // transpose
+			glm::value_ptr(camera.view_from_camera(window))
+		);
+
+		for (int i = 0; i < particles->size(); ++i) {
+
+			Particle* particle = &(*particles)[i];
+
+			particle->world_from_model = glm::translate(
+				particle->world_from_model,
+				particle->velocity
+			);
+
+
+			particle->world_from_model = glm::rotate(
+				particle->world_from_model,
+				0.001f,
+				glm::vec3(0.0f, 1.0f, 0.0f)
+			);
+
+			GLint world_from_model_location = glGetUniformLocation(sky_shader_program, "world_from_model");
+			glUniformMatrix4fv(
+				world_from_model_location,
+				1, // count
+				GL_FALSE, // transpose
+				glm::value_ptr(particle->world_from_model)
+			);
+			model.draw();
+		}
+	}
+
+	glDepthMask(GL_TRUE);
+	// Enable the shader program here since we only have one
+	glUseProgram(shader_program);
+
+	GLint sky_box_location = glGetUniformLocation(shader_program, "skybox");
+	glUniform1i(sky_box_location, 3);
 
 	GLint world_to_camera_location = glGetUniformLocation(shader_program, "camera_from_world");
 	GLint color_location = glGetUniformLocation(shader_program, "color");
@@ -530,12 +681,13 @@ void render_scene(GLFWwindow* window, Model model, GLuint shader_program, Camera
 			particle->velocity
 		);
 
+		/*
 		particle->world_from_model = glm::rotate(
 			particle->world_from_model,
 			0.001f,
 			glm::vec3(0.0f, 1.0f, 0.0f)
 		);
-
+		*/
 
 		GLint world_from_model_location = glGetUniformLocation(shader_program, "world_from_model");
 		glUniformMatrix4fv(
@@ -551,21 +703,22 @@ void render_scene(GLFWwindow* window, Model model, GLuint shader_program, Camera
 
 	// Display the results on screen
 	glfwSwapBuffers(window);
-
 }
 
-void cleanup(GLuint shader_program, Model model, std::vector<GLuint>* tex) {//takes in window pointer into the argument
-	// Call glfw terminate here
+void cleanup(GLuint shader_program,GLuint sky_shader_program, Model model, std::vector<GLuint>* tex) {//takes in window pointer into the argument
+	
 	glDeleteTextures(tex->size(), &(*tex)[0]);
 	glDeleteProgram(shader_program);
+	glDeleteProgram(sky_shader_program);
 	model.cleanup();
-	glfwTerminate(); //this terminates the glfw library after we are done
+	glfwTerminate(); 
 }
 
 int main(void) {
 
-	GLFWwindow* window = initialize_glfw(); //a pointer object for window that equals the glfw function
+	GLFWwindow* window = initialize_glfw(); 
 	GLuint shader_program = compile_shader("vertex_shader.txt","fragment_shader.txt");
+	GLuint sky_shader_program = compile_shader("vertex_shader_sky.txt", "fragment_shader_sky.txt");
 
 	std::vector<GLuint> textures;
 
@@ -573,10 +726,16 @@ int main(void) {
 	textures.push_back(load_textures(GL_TEXTURE1, "Metal_Plate_042_basecolor.jpg"));
 	textures.push_back(load_textures(GL_TEXTURE2, "Metal_Plate_042_normal.jpg"));
 
-	std::string objectFileName = "helicopter.obj";
+	textures.push_back(load_cubemap(GL_TEXTURE3, 
+		"cubemap_sides/left.png",
+		"cubemap_sides/front.png",
+		"cubemap_sides/right.png",
+		"cubemap_sides/back.png",
+		"cubemap_sides/top.png",
+		"cubemap_sides/bottom.png"
+		));
 
-	//these are all uninitialized at the start but when they are passed into the function then 
-	//the values are changed because they are by reference into the functions above.
+	std::string objectFileName = "helicopter.obj";
 
 	Model model = Model::load(objectFileName);
 
@@ -591,18 +750,22 @@ int main(void) {
 	camera.camera_from_world = glm::translate(camera.camera_from_world,
 		glm::vec3(0.0f, -1.5f, -120.0f));
 
-	//need to create a view_from_camera and pass it into the render scene 
-	//and make the view_from camera equal to the function inside the camera struct
+
 
 	while (!glfwWindowShouldClose(window)) {
 
-		//camera from world is being changed here before it is being passed into the render_scene
-		render_scene(window, model, shader_program, camera, &particles);
+		camera.camera_from_world = glm::rotate(
+			camera.camera_from_world,
+			0.001f,
+			glm::vec3(0.0f, 0.1f, 0.0f)
+		);
+
+		render_scene(window, model, shader_program,sky_shader_program, camera, &particles);
 
 		glfwPollEvents();
 	}
 
-	cleanup(shader_program, model, &textures);
+	cleanup(shader_program,sky_shader_program, model, &textures);
 
 	return 0;
 }

@@ -1,0 +1,15 @@
+
+#version 330 core
+
+out vec4 FragColor;
+
+in vec3 TexCoords;
+
+uniform samplerCube skybox;
+
+void main() { 
+
+//Final output
+FragColor = vec4(texture(skybox,TexCoords).rgb,1.0);
+
+}

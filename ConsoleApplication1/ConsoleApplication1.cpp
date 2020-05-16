@@ -14,13 +14,11 @@
 #include <algorithm>
 
 GLFWwindow* initialize_glfw() {
-	// Initialize the context
-	if (!glfwInit()) { //cancels the application if it can not open the window
+	if (!glfwInit()) { 
 		std::cout << "glfwInit(...) failed\n";
 		abort();
 	}
 
-	// Ask for a core profile
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -81,7 +79,6 @@ struct Model {
 
 		while (std::getline(file, line)) {
 			std::istringstream line_stream(line);
-
 			std::string type;
 			line_stream >> type;
 
@@ -616,12 +613,13 @@ void render_scene(GLFWwindow* window, Model model, GLuint shader_program, GLuint
 				particle->velocity
 			);
 
-
+			/*
 			particle->world_from_model = glm::rotate(
 				particle->world_from_model,
 				0.001f,
 				glm::vec3(0.0f, 1.0f, 0.0f)
 			);
+			*/
 
 			GLint world_from_model_location = glGetUniformLocation(sky_shader_program, "world_from_model");
 			glUniformMatrix4fv(
@@ -700,72 +698,172 @@ void render_scene(GLFWwindow* window, Model model, GLuint shader_program, GLuint
 		model.draw();
 
 	}
-
-	// Display the results on screen
-	glfwSwapBuffers(window);
-}
-
-void cleanup(GLuint shader_program,GLuint sky_shader_program, Model model, std::vector<GLuint>* tex) {//takes in window pointer into the argument
-	
-	glDeleteTextures(tex->size(), &(*tex)[0]);
-	glDeleteProgram(shader_program);
-	glDeleteProgram(sky_shader_program);
-	model.cleanup();
-	glfwTerminate(); 
 }
 
 int main(void) {
 
-	GLFWwindow* window = initialize_glfw(); 
-	GLuint shader_program = compile_shader("vertex_shader.txt","fragment_shader.txt");
+	GLFWwindow* window = initialize_glfw();
+	GLuint shader_program = compile_shader("vertex_shader.txt", "fragment_shader.txt");
 	GLuint sky_shader_program = compile_shader("vertex_shader_sky.txt", "fragment_shader_sky.txt");
 
 	std::vector<GLuint> textures;
 
-	textures.push_back(load_textures(GL_TEXTURE0, "Metal_Plate_042_roughness.jpg"));
-	textures.push_back(load_textures(GL_TEXTURE1, "Metal_Plate_042_basecolor.jpg"));
+	//textures.push_back(load_textures(GL_TEXTURE0, "Metal_Plate_042_roughness.jpg"));
+	//textures.push_back(load_textures(GL_TEXTURE1, "Metal_Plate_042_basecolor.jpg"));
 	textures.push_back(load_textures(GL_TEXTURE2, "Metal_Plate_042_normal.jpg"));
 
-	textures.push_back(load_cubemap(GL_TEXTURE3, 
+	textures.push_back(load_cubemap(GL_TEXTURE3,
 		"cubemap_sides/left.png",
 		"cubemap_sides/front.png",
 		"cubemap_sides/right.png",
 		"cubemap_sides/back.png",
 		"cubemap_sides/top.png",
 		"cubemap_sides/bottom.png"
-		));
+	));
 
 	std::string objectFileName = "helicopter.obj";
 
 	Model model = Model::load(objectFileName);
 
+	/*
+	//STARTING MULTIPLE MODELS
+	std::vector<Model> models;
+	models.push_back(Model::load("helicopter.obj"));
+	*/
+
 	std::vector<Particle>particles;
 
 	particles.push_back(Particle(
-		glm::translate(glm::mat4(1), glm::vec3(0.0f, 0.0f, 0.0f)),
-		glm::vec3(0.0f, 0.0f, 0.0f)
+		glm::translate(glm::mat4(1), glm::vec3(0.0f, -10.0f, -50.0f)),
+		glm::vec3(0.0f, 0.03f, 0.01f)
 	));
 
 	Camera camera;
+
 	camera.camera_from_world = glm::translate(camera.camera_from_world,
-		glm::vec3(0.0f, -1.5f, -120.0f));
+		glm::vec3(0.0f, 0.0f, -90.0f));
 
+	//Initialize FrameBuffer
+	GLuint fbo;
+	glGenFramebuffers(1, &fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
+	//Get width and height on window
+	int width, height;
+	glfwGetWindowSize(window, &width, &height);
 
-	while (!glfwWindowShouldClose(window)) {
+	//INITIALIZ COLOR BUFFER
+	GLuint fbo_color;
+	glGenTextures(1, &fbo_color);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, fbo_color);
+	
+	glTexImage2D(
+		GL_TEXTURE_2D,
+		0,
+		GL_RGB,
+		width,
+		height,
+		0,
+		GL_RGB,
+		GL_UNSIGNED_BYTE,
+		nullptr
+	);
 
-		camera.camera_from_world = glm::rotate(
-			camera.camera_from_world,
-			0.001f,
-			glm::vec3(0.0f, 0.1f, 0.0f)
-		);
+	glFramebufferTexture2D(
+		GL_FRAMEBUFFER,
+		GL_COLOR_ATTACHMENT0,
+		GL_TEXTURE_2D,
+		fbo_color,
+		0
+	);
 
-		render_scene(window, model, shader_program,sky_shader_program, camera, &particles);
+	glTexParameteri(
+		GL_TEXTURE_2D,
+		GL_TEXTURE_MIN_FILTER,
+		GL_LINEAR
+	);
 
-		glfwPollEvents();
-	}
+	glTexParameteri(
+		GL_TEXTURE_2D,
+		GL_TEXTURE_MAG_FILTER,
+		GL_LINEAR
+	);
 
-	cleanup(shader_program,sky_shader_program, model, &textures);
+	//INITIALIZE COLOR BUFFER
+	GLuint fbo_depth;
+	glGenTextures(1, &fbo_depth);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, fbo_depth);
+
+	glTexImage2D(
+		GL_TEXTURE_2D,
+		0,
+		GL_DEPTH24_STENCIL8,
+		width,
+		height,
+		0,
+		GL_DEPTH_STENCIL,
+		GL_UNSIGNED_INT_24_8,
+		nullptr
+	);
+
+	glFramebufferTexture2D(
+		GL_FRAMEBUFFER,
+		GL_DEPTH_STENCIL_ATTACHMENT,
+		GL_TEXTURE_2D,
+		fbo_depth,
+		0
+	);
+
+	glTexParameteri(
+		GL_TEXTURE_2D,
+		GL_TEXTURE_MIN_FILTER,
+		GL_LINEAR
+	);
+
+	glTexParameteri(
+		GL_TEXTURE_2D,
+		GL_TEXTURE_MAG_FILTER,
+		GL_LINEAR
+	);
+
+		//Check if framebuffer is complete
+		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+			std::cout << "Framebuffer incomplete!\n";
+			abort();
+		}
+
+		while (!glfwWindowShouldClose(window)) {
+
+			camera.camera_from_world = glm::rotate(
+				camera.camera_from_world,
+				0.0002f,
+				glm::vec3(0.0f, 1.0f, 0.0f)
+				//roation up/down,right/left,sideways
+			);
+
+			glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+			render_scene(window, model, shader_program, sky_shader_program, camera, &particles);
+			glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER);
+
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+			render_scene(window, model, shader_program, sky_shader_program, camera, &particles);
+			// Display the results on screen
+
+			glfwSwapBuffers(window);
+			glfwPollEvents();
+		}
+
+		//Cleanup
+			glDeleteTextures(textures.size(), &textures[0]);
+			glDeleteProgram(shader_program);
+			glDeleteProgram(sky_shader_program);
+			model.cleanup();
+			glfwTerminate();
+
 
 	return 0;
 }

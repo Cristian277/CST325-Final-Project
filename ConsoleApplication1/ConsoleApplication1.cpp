@@ -14,7 +14,7 @@
 #include <algorithm>
 
 GLFWwindow* initialize_glfw() {
-	if (!glfwInit()) { 
+	if (!glfwInit()) {
 		std::cout << "glfwInit(...) failed\n";
 		abort();
 	}
@@ -233,13 +233,10 @@ struct Model {
 				vertices.push_back(bitangent.x);
 				vertices.push_back(bitangent.y);
 				vertices.push_back(bitangent.z);
-
 			}
-
 		}
 
 		{
-
 			model.vertex_count = vertices.size();
 
 			// Use OpenGL to store it on the GPU
@@ -251,10 +248,7 @@ struct Model {
 				// Copy all our data to the current buffer!
 				glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
 			}
-
 		}
-
-
 		// Tell the GPU how to interpret our existing vertex data
 		{
 			// Create a Vertex Array Object to hold the settings
@@ -322,11 +316,8 @@ struct Model {
 			glEnableVertexAttribArray(4);
 
 			return model;
-
 		}
 	}
-
-
 };
 struct Camera {
 
@@ -348,7 +339,6 @@ struct Camera {
 			this->far
 		);
 	}
-
 };
 
 struct Particle {
@@ -420,7 +410,7 @@ GLuint compile_shader(const char* vertex_filename, const char* fragment_filename
 		std::cout << "shader linker failed:\n" << infoLog << std::endl;
 		abort();
 	}
-	glDeleteShader(vertex_shader); //deletes vertex and fragment shaders 
+	glDeleteShader(vertex_shader); 
 	glDeleteShader(fragment_shader);
 
 	return shader_program;
@@ -434,14 +424,13 @@ GLuint load_textures(GLenum active_texture, const char* filename) {
 	glGenTextures(1, &tex);
 	glActiveTexture(active_texture);
 	glBindTexture(GL_TEXTURE_2D, tex);
-	// set the texture wrapping/filtering options (on the currently bound texture object)
+	
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	// load and generate the texture
 	int width = 0;
 	int height = 0;
 	GLubyte* pixels = stbi_load(filename, &width, &height, NULL, 3);
@@ -456,14 +445,14 @@ GLuint load_textures(GLenum active_texture, const char* filename) {
 }
 
 GLuint load_cubemap(
-	GLenum active_texture, 
+	GLenum active_texture,
 	const char* left,
 	const char* front,
 	const char* right,
 	const char* back,
 	const char* top,
 	const char* bottom
-	) {
+) {
 
 	GLuint tex;
 
@@ -488,7 +477,7 @@ GLuint load_cubemap(
 			abort();
 		}
 		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, pixels);
-		
+
 	}
 
 	{
@@ -500,7 +489,7 @@ GLuint load_cubemap(
 			abort();
 		}
 		glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, pixels);
-		
+
 	}
 
 	{
@@ -551,32 +540,22 @@ GLuint load_cubemap(
 	return tex;
 }
 
-void render_scene(GLFWwindow* window, Model model, GLuint shader_program, GLuint sky_shader_program, Camera camera, std::vector<Particle>* particles) {
-
-	static float red = 0.0f;
-	static float dir = 1.0f;
-
-	static float incrementer = 0.0f;
-	static float dir2 = 1.0;
+void render_scene(
+	GLFWwindow* window,
+	std::vector<Model> *models, 
+	GLuint shader_program, 
+	GLuint sky_shader_program,
+	Camera camera, 
+	std::vector<Particle>* particles) {
 
 	glClearColor(0.0f, 0.0f, 0.5f, 1.0f);
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	if (dir > 0.0) {
-		red += 0.001f;
-		if (red > 1.0) {
-			dir = -1.0;
-		}
-	}
-	else {
-		red -= 0.001f;
-	}
-	if (red < 0.0) {
-		dir = 1.0;
-	}
 	glDepthMask(GL_FALSE);
+
 	{
+		//SKY SHADER PROGRAM
 		glUseProgram(sky_shader_program);
 
 		GLint sky_box_location = glGetUniformLocation(sky_shader_program, "skybox");
@@ -588,58 +567,63 @@ void render_scene(GLFWwindow* window, Model model, GLuint shader_program, GLuint
 		GLint texture_location = glGetUniformLocation(sky_shader_program, "sampler2Dtex");
 
 		GLint view_from_camera_location = glGetUniformLocation(sky_shader_program, "view_from_camera"); //newest location
+		glUniformMatrix4fv(
+			view_from_camera_location,
+			1, 
+			GL_FALSE, 
+			glm::value_ptr(camera.view_from_camera(window))
+		);
 
 		glm::mat4 camera_from_world_no_translation = glm::mat4(glm::mat3(camera.camera_from_world));
 		glUniformMatrix4fv(
 			world_to_camera_location,
-			1, // count
-			GL_FALSE, // transpose
+			1, 
+			GL_FALSE, 
 			glm::value_ptr(camera_from_world_no_translation)
 		);
 
-		glUniformMatrix4fv(
-			view_from_camera_location,
-			1, // count
-			GL_FALSE, // transpose
-			glm::value_ptr(camera.view_from_camera(window))
-		);
-
-		for (int i = 0; i < particles->size(); ++i) {
-
-			Particle* particle = &(*particles)[i];
+			Particle* particle = &(*particles)[0];
 
 			particle->world_from_model = glm::translate(
 				particle->world_from_model,
 				particle->velocity
 			);
 
-			/*
-			particle->world_from_model = glm::rotate(
-				particle->world_from_model,
-				0.001f,
-				glm::vec3(0.0f, 1.0f, 0.0f)
-			);
-			*/
-
 			GLint world_from_model_location = glGetUniformLocation(sky_shader_program, "world_from_model");
 			glUniformMatrix4fv(
 				world_from_model_location,
-				1, // count
-				GL_FALSE, // transpose
+				1,
+				GL_FALSE, 
 				glm::value_ptr(particle->world_from_model)
 			);
-			model.draw();
-		}
+
+			glm::vec4 position = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+			position = particle->world_from_model * position;
+
+			if (position.x > 1.0) {
+				particle->velocity.x = -abs(particle->velocity.x);
+			}
+			else if (position.x < 0.0) {
+				particle->velocity.x = abs(particle->velocity.x);
+			}
+
+			if (position.y > 1.0) {
+				particle->velocity.y = -abs(particle->velocity.y);
+			}
+			else if (position.y < 0.0) {
+				particle->velocity.y = abs(particle->velocity.y);
+			}
+			(*models)[0].draw();
 	}
 
+	//SHADER PROGRAM
 	glDepthMask(GL_TRUE);
-	// Enable the shader program here since we only have one
+
 	glUseProgram(shader_program);
 
 	GLint sky_box_location = glGetUniformLocation(shader_program, "skybox");
 	glUniform1i(sky_box_location, 3);
 
-	GLint world_to_camera_location = glGetUniformLocation(shader_program, "camera_from_world");
 	GLint color_location = glGetUniformLocation(shader_program, "color");
 	GLint offset_location = glGetUniformLocation(shader_program, "offset");
 	GLint texture_location = glGetUniformLocation(shader_program, "sampler2Dtex");
@@ -653,21 +637,21 @@ void render_scene(GLFWwindow* window, Model model, GLuint shader_program, GLuint
 	GLuint normal_map_location = glGetUniformLocation(shader_program, "normal_map");
 	glUniform1i(normal_map_location, 2);
 
+
 	GLint view_from_camera_location = glGetUniformLocation(shader_program, "view_from_camera"); //newest location
-
-	//4x4 matrix filled with floats
-	glUniformMatrix4fv(
-		world_to_camera_location,
-		1, // count
-		GL_FALSE, // transpose
-		glm::value_ptr(camera.camera_from_world)
-	);
-
 	glUniformMatrix4fv(
 		view_from_camera_location,
-		1, // count
-		GL_FALSE, // transpose
+		1,
+		GL_FALSE, 
 		glm::value_ptr(camera.view_from_camera(window))
+	);
+
+	GLint world_to_camera_location = glGetUniformLocation(shader_program, "camera_from_world");
+	glUniformMatrix4fv(
+		world_to_camera_location,
+		1,
+		GL_FALSE, 
+		glm::value_ptr(camera.camera_from_world)
 	);
 
 	for (int i = 0; i < particles->size(); ++i) {
@@ -679,24 +663,15 @@ void render_scene(GLFWwindow* window, Model model, GLuint shader_program, GLuint
 			particle->velocity
 		);
 
-		/*
-		particle->world_from_model = glm::rotate(
-			particle->world_from_model,
-			0.001f,
-			glm::vec3(0.0f, 1.0f, 0.0f)
-		);
-		*/
-
 		GLint world_from_model_location = glGetUniformLocation(shader_program, "world_from_model");
 		glUniformMatrix4fv(
 			world_from_model_location,
-			1, // count
-			GL_FALSE, // transpose
+			1,
+			GL_FALSE, 
 			glm::value_ptr(particle->world_from_model)
 		);
 
-		model.draw();
-
+		(*models)[i].draw();
 	}
 }
 
@@ -706,12 +681,16 @@ int main(void) {
 	GLuint shader_program = compile_shader("vertex_shader.txt", "fragment_shader.txt");
 	GLuint sky_shader_program = compile_shader("vertex_shader_sky.txt", "fragment_shader_sky.txt");
 
+	std::vector<Model>models;
+	models.push_back(Model::load("cube-normals.obj"));
+	models.push_back(Model::load("sphere-normals.obj"));
+	models.push_back(Model::load("monkey-normals.obj"));
+
 	std::vector<GLuint> textures;
 
-	//textures.push_back(load_textures(GL_TEXTURE0, "Metal_Plate_042_roughness.jpg"));
-	//textures.push_back(load_textures(GL_TEXTURE1, "Metal_Plate_042_basecolor.jpg"));
+	textures.push_back(load_textures(GL_TEXTURE0, "Metal_Plate_042_roughness.jpg"));
+	textures.push_back(load_textures(GL_TEXTURE1, "Metal_Plate_042_basecolor.jpg"));
 	textures.push_back(load_textures(GL_TEXTURE2, "Metal_Plate_042_normal.jpg"));
-
 	textures.push_back(load_cubemap(GL_TEXTURE3,
 		"cubemap_sides/left.png",
 		"cubemap_sides/front.png",
@@ -721,27 +700,58 @@ int main(void) {
 		"cubemap_sides/bottom.png"
 	));
 
-	std::string objectFileName = "helicopter.obj";
-
-	Model model = Model::load(objectFileName);
-
-	/*
-	//STARTING MULTIPLE MODELS
-	std::vector<Model> models;
-	models.push_back(Model::load("helicopter.obj"));
-	*/
-
-	std::vector<Particle>particles;
+	std::vector<Particle> particles;
 
 	particles.push_back(Particle(
-		glm::translate(glm::mat4(1), glm::vec3(0.0f, -10.0f, -50.0f)),
-		glm::vec3(0.0f, 0.03f, 0.01f)
+		glm::scale(
+			glm::translate(
+				glm::rotate(
+					glm::mat4(1),
+					0.3f,
+					glm::vec3(0.0f, 1.0f, 0.0f)
+				),
+				glm::vec3(10.0f, 0.0f, 0.0f)
+			),
+			glm::vec3(3.0f, 3.0f, 3.0f)
+		),
+		glm::vec3(0.0f, 0.0f, 0.0f)
+	));
+
+	particles.push_back(Particle(
+		glm::scale(
+			glm::translate(
+				glm::rotate(
+					glm::mat4(1),
+					0.3f,
+					glm::vec3(0.0f, 1.0f, 0.0f)
+				),
+				glm::vec3(-10.0f, 0.0f, 0.0f)
+			),
+			glm::vec3(3.0f, 3.0f, 3.0f)
+		),
+		glm::vec3(0.0f, 0.0f, 0.0f)
+	));
+
+	
+	particles.push_back(Particle(
+		glm::scale(
+			glm::translate(
+				glm::rotate(
+					glm::mat4(1),
+					0.3f,
+					glm::vec3(0.0f, 1.0f, 0.0f)
+				),
+				glm::vec3(-0.0f, 0.0f, 0.0f)
+			),
+			glm::vec3(3.0f, 3.0f, 3.0f)
+		),
+		glm::vec3(0.0f, 0.0f, 0.0f)
 	));
 
 	Camera camera;
 
 	camera.camera_from_world = glm::translate(camera.camera_from_world,
-		glm::vec3(0.0f, 0.0f, -90.0f));
+		glm::vec3(0.0f,0.0f,-20.0f));
 
 	//Initialize FrameBuffer
 	GLuint fbo;
@@ -757,7 +767,7 @@ int main(void) {
 	glGenTextures(1, &fbo_color);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, fbo_color);
-	
+
 	glTexImage2D(
 		GL_TEXTURE_2D,
 		0,
@@ -828,41 +838,47 @@ int main(void) {
 		GL_LINEAR
 	);
 
-		//Check if framebuffer is complete
-		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-			std::cout << "Framebuffer incomplete!\n";
-			abort();
-		}
+	//Check if framebuffer is complete
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+		std::cout << "Framebuffer incomplete!\n";
+		abort();
+	}
 
-		while (!glfwWindowShouldClose(window)) {
+	while (!glfwWindowShouldClose(window)) {
 
-			camera.camera_from_world = glm::rotate(
-				camera.camera_from_world,
-				0.0002f,
-				glm::vec3(0.0f, 1.0f, 0.0f)
-				//roation up/down,right/left,sideways
-			);
+		camera.camera_from_world = glm::rotate(
+			camera.camera_from_world,
+			0.002f,
+			glm::vec3(0.0f, 1.0f, 0.0f)
+			//roation up/down,right/left,sideways
+		);
+		
+		/*
+		//FIRST RENDER
+		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+		render_scene(window, &models, shader_program, sky_shader_program, camera, &particles);
+		glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
 
-			glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-			render_scene(window, model, shader_program, sky_shader_program, camera, &particles);
-			glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER);
+		*/
+		//SECOND RENDER
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		render_scene(window, &models, shader_program, sky_shader_program, camera, &particles);
 
-			render_scene(window, model, shader_program, sky_shader_program, camera, &particles);
-			// Display the results on screen
+		glfwSwapBuffers(window);
+		glfwPollEvents();
+	}
 
-			glfwSwapBuffers(window);
-			glfwPollEvents();
-		}
-
-		//Cleanup
-			glDeleteTextures(textures.size(), &textures[0]);
-			glDeleteProgram(shader_program);
-			glDeleteProgram(sky_shader_program);
-			model.cleanup();
-			glfwTerminate();
+	//Cleanup
+	glDeleteTextures(textures.size(), &textures[0]);
+	glDeleteProgram(shader_program);
+	glDeleteProgram(sky_shader_program);
+	glDeleteFramebuffers(1, &fbo);
+	for (auto i = 0; i < models.size(); ++i) {
+		models[i].cleanup();
+	}
+	glfwTerminate();
 
 
 	return 0;

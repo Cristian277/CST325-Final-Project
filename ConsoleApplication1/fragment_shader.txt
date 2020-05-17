@@ -48,7 +48,7 @@ vec3 R = reflect(I,normal);
 vec3 reflection = texture(skybox, R).xyz;
 
 //Final output
-FragColor = vec4(ambient+diffuse+specular*reflection,1.0);
+FragColor = vec4(ambient + diffuse + specular * reflection,1.0);
 //FragColor = vec4(reflection,1.0);
 //"FragColor = vec4((Normal+1.0)/2.0,1.0);\n"
 };

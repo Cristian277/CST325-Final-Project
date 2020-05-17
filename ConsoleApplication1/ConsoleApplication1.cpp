@@ -548,7 +548,7 @@ void render_scene(
 	Camera camera, 
 	std::vector<Particle>* particles) {
 
-	glClearColor(0.0f, 0.0f, 0.5f, 1.0f);
+	glClearColor(0.7f, 0.0f, 0.5f, 1.0f);
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -600,19 +600,22 @@ void render_scene(
 			glm::vec4 position = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
 			position = particle->world_from_model * position;
 
-			if (position.x > 1.0) {
+			
+			if (position.x > 2.0) {
 				particle->velocity.x = -abs(particle->velocity.x);
 			}
 			else if (position.x < 0.0) {
 				particle->velocity.x = abs(particle->velocity.x);
 			}
 
-			if (position.y > 1.0) {
+			if (position.y > 2.0) {
 				particle->velocity.y = -abs(particle->velocity.y);
 			}
 			else if (position.y < 0.0) {
 				particle->velocity.y = abs(particle->velocity.y);
 			}
+			
+			
 			(*models)[0].draw();
 	}
 
@@ -636,7 +639,6 @@ void render_scene(
 
 	GLuint normal_map_location = glGetUniformLocation(shader_program, "normal_map");
 	glUniform1i(normal_map_location, 2);
-
 
 	GLint view_from_camera_location = glGetUniformLocation(shader_program, "view_from_camera"); //newest location
 	glUniformMatrix4fv(
@@ -671,6 +673,24 @@ void render_scene(
 			glm::value_ptr(particle->world_from_model)
 		);
 
+		glm::vec4 position = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+		position = particle->world_from_model * position;
+
+		if (position.x > 2.0) {
+			particle->velocity.x = -abs(particle->velocity.x);
+		}
+		else if (position.x < 0.0) {
+			particle->velocity.x = abs(particle->velocity.x);
+		}
+		
+		if (position.y > 2.0) {
+			particle->velocity.y = -abs(particle->velocity.y);
+		}
+		else if (position.y < 0.0) {
+			particle->velocity.y = abs(particle->velocity.y);
+		}
+		
+
 		(*models)[i].draw();
 	}
 }
@@ -683,14 +703,14 @@ int main(void) {
 
 	std::vector<Model>models;
 	models.push_back(Model::load("cube-normals.obj"));
-	models.push_back(Model::load("sphere-normals.obj"));
+	models.push_back(Model::load("plane.obj"));
 	models.push_back(Model::load("monkey-normals.obj"));
 
 	std::vector<GLuint> textures;
 
-	textures.push_back(load_textures(GL_TEXTURE0, "Metal_Plate_042_roughness.jpg"));
-	textures.push_back(load_textures(GL_TEXTURE1, "Metal_Plate_042_basecolor.jpg"));
-	textures.push_back(load_textures(GL_TEXTURE2, "Metal_Plate_042_normal.jpg"));
+	textures.push_back(load_textures(GL_TEXTURE0, "PaintedMetal002_2K_Color.jpg"));
+	textures.push_back(load_textures(GL_TEXTURE1, "PaintedMetal002_2K_Roughness.jpg"));
+	textures.push_back(load_textures(GL_TEXTURE2, "PaintedMetal002_2K_Normal.jpg"));
 	textures.push_back(load_cubemap(GL_TEXTURE3,
 		"cubemap_sides/left.png",
 		"cubemap_sides/front.png",
@@ -710,13 +730,14 @@ int main(void) {
 					0.3f,
 					glm::vec3(0.0f, 1.0f, 0.0f)
 				),
-				glm::vec3(10.0f, 0.0f, 0.0f)
+				glm::vec3(10.0f, 30.0f, 0.0f)
 			),
 			glm::vec3(3.0f, 3.0f, 3.0f)
-		),
-		glm::vec3(0.0f, 0.0f, 0.0f)
+		),//for flying up or down x y z
+		glm::vec3(0.0f, 0.003f, 0.0f)
 	));
 
+	//LAST TWO OBJECTS NOT CUBE
 	particles.push_back(Particle(
 		glm::scale(
 			glm::translate(
@@ -725,13 +746,12 @@ int main(void) {
 					0.3f,
 					glm::vec3(0.0f, 1.0f, 0.0f)
 				),
-				glm::vec3(-10.0f, 0.0f, 0.0f)
+				glm::vec3(-10.0f, 30.0f, 0.0f)
 			),
 			glm::vec3(3.0f, 3.0f, 3.0f)
-		),
-		glm::vec3(0.0f, 0.0f, 0.0f)
+		),//xyz auto
+		glm::vec3(0.0f, 0.006f, 0.0f)
 	));
-
 	
 	particles.push_back(Particle(
 		glm::scale(
@@ -741,17 +761,17 @@ int main(void) {
 					0.3f,
 					glm::vec3(0.0f, 1.0f, 0.0f)
 				),
-				glm::vec3(-0.0f, 0.0f, 0.0f)
+				glm::vec3(0.0f, 30.0f, 0.0f)
 			),
 			glm::vec3(3.0f, 3.0f, 3.0f)
-		),
-		glm::vec3(0.0f, 0.0f, 0.0f)
+		),//xyz auto 
+		glm::vec3(0.0f, 0.006f, 0.0f)
 	));
 
 	Camera camera;
 
 	camera.camera_from_world = glm::translate(camera.camera_from_world,
-		glm::vec3(0.0f,0.0f,-20.0f));
+		glm::vec3(0.0f,0.0f,-30.0f));
 
 	//Initialize FrameBuffer
 	GLuint fbo;
@@ -765,78 +785,31 @@ int main(void) {
 	//INITIALIZ COLOR BUFFER
 	GLuint fbo_color;
 	glGenTextures(1, &fbo_color);
+
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, fbo_color);
 
-	glTexImage2D(
-		GL_TEXTURE_2D,
-		0,
-		GL_RGB,
-		width,
-		height,
-		0,
-		GL_RGB,
-		GL_UNSIGNED_BYTE,
-		nullptr
-	);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
 
-	glFramebufferTexture2D(
-		GL_FRAMEBUFFER,
-		GL_COLOR_ATTACHMENT0,
-		GL_TEXTURE_2D,
-		fbo_color,
-		0
-	);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_color, 0);
 
-	glTexParameteri(
-		GL_TEXTURE_2D,
-		GL_TEXTURE_MIN_FILTER,
-		GL_LINEAR
-	);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	glTexParameteri(
-		GL_TEXTURE_2D,
-		GL_TEXTURE_MAG_FILTER,
-		GL_LINEAR
-	);
 
 	//INITIALIZE COLOR BUFFER
+
 	GLuint fbo_depth;
+
 	glGenTextures(1, &fbo_depth);
+
 	glActiveTexture(GL_TEXTURE1);
+
 	glBindTexture(GL_TEXTURE_2D, fbo_depth);
-
-	glTexImage2D(
-		GL_TEXTURE_2D,
-		0,
-		GL_DEPTH24_STENCIL8,
-		width,
-		height,
-		0,
-		GL_DEPTH_STENCIL,
-		GL_UNSIGNED_INT_24_8,
-		nullptr
-	);
-
-	glFramebufferTexture2D(
-		GL_FRAMEBUFFER,
-		GL_DEPTH_STENCIL_ATTACHMENT,
-		GL_TEXTURE_2D,
-		fbo_depth,
-		0
-	);
-
-	glTexParameteri(
-		GL_TEXTURE_2D,
-		GL_TEXTURE_MIN_FILTER,
-		GL_LINEAR
-	);
-
-	glTexParameteri(
-		GL_TEXTURE_2D,
-		GL_TEXTURE_MAG_FILTER,
-		GL_LINEAR
-	);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, width, height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, nullptr);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, fbo_depth, 0);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 	//Check if framebuffer is complete
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
@@ -845,27 +818,21 @@ int main(void) {
 	}
 
 	while (!glfwWindowShouldClose(window)) {
-
 		camera.camera_from_world = glm::rotate(
 			camera.camera_from_world,
 			0.002f,
 			glm::vec3(0.0f, 1.0f, 0.0f)
-			//roation up/down,right/left,sideways
+			//rotation up/down,right/left,sideways
 		);
-		
-		/*
 		//FIRST RENDER
-		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+		//glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+		//glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
+		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		//render_scene(window, &models, shader_program, sky_shader_program, camera, &particles);
+		
+		glBindFramebuffer(GL_FRAMEBUFFER,0);
 		render_scene(window, &models, shader_program, sky_shader_program, camera, &particles);
-		glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
-
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER);
-		*/
-		//SECOND RENDER
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-		render_scene(window, &models, shader_program, sky_shader_program, camera, &particles);
-
+		
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}

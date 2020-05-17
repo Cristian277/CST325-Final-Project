@@ -18,7 +18,7 @@ void main() { //color is the name of the vec 4 (r,g,b,a)
 //Light settings
 vec3 ambient = vec3(0.1,0.1,0.1);
 vec3 light_dir = vec3(1.0,1.0,1.0);
-vec3 light_color = 0.2*vec3(0.6,0.6,0.6)-ambient*0.5;
+vec3 light_color = 2.0*vec3(0.6,0.6,0.6)-ambient*0.5;
 //"vec3 specular_color = vec3(1.0,1.0,1.0);\n"
 vec3 specular_color = 0.4 * vec3(1.0,1.0,1.0);
 
@@ -49,6 +49,6 @@ vec3 reflection = texture(skybox, R).xyz;
 
 //Final output
 FragColor = vec4(ambient + diffuse + specular * reflection,1.0);
-//FragColor = vec4(reflection,1.0);
-//"FragColor = vec4((Normal+1.0)/2.0,1.0);\n"
+//FragColor = vec4(texture(specular_map,Texcoords).xyz,1.0);
+
 };

@@ -624,9 +624,6 @@ void render_scene(
 
 	glUseProgram(shader_program);
 
-	GLint sky_box_location = glGetUniformLocation(shader_program, "skybox");
-	glUniform1i(sky_box_location, 3);
-
 	GLint color_location = glGetUniformLocation(shader_program, "color");
 	GLint offset_location = glGetUniformLocation(shader_program, "offset");
 	GLint texture_location = glGetUniformLocation(shader_program, "sampler2Dtex");
@@ -639,6 +636,9 @@ void render_scene(
 
 	GLuint normal_map_location = glGetUniformLocation(shader_program, "normal_map");
 	glUniform1i(normal_map_location, 2);
+
+	GLint sky_box_location = glGetUniformLocation(shader_program, "skybox");
+	glUniform1i(sky_box_location, 3);
 
 	GLint view_from_camera_location = glGetUniformLocation(shader_program, "view_from_camera"); //newest location
 	glUniformMatrix4fv(
@@ -676,21 +676,20 @@ void render_scene(
 		glm::vec4 position = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
 		position = particle->world_from_model * position;
 
-		if (position.x > 2.0) {
-			particle->velocity.x = -abs(particle->velocity.x);
-		}
-		else if (position.x < 0.0) {
-			particle->velocity.x = abs(particle->velocity.x);
-		}
-		
-		if (position.y > 2.0) {
-			particle->velocity.y = -abs(particle->velocity.y);
-		}
-		else if (position.y < 0.0) {
-			particle->velocity.y = abs(particle->velocity.y);
-		}
-		
+			if (position.x > 2.0) {
+				particle->velocity.x = -abs(particle->velocity.x);
+			}
+			else if (position.x < 0.0) {
+				particle->velocity.x = abs(particle->velocity.x);
+			}
 
+			if (position.y > 2.0) {
+				particle->velocity.y = -abs(particle->velocity.y);
+			}
+			else if (position.y < 0.0) {
+				particle->velocity.y = abs(particle->velocity.y);
+			}
+		
 		(*models)[i].draw();
 	}
 }
@@ -700,10 +699,12 @@ int main(void) {
 	GLFWwindow* window = initialize_glfw();
 	GLuint shader_program = compile_shader("vertex_shader.txt", "fragment_shader.txt");
 	GLuint sky_shader_program = compile_shader("vertex_shader_sky.txt", "fragment_shader_sky.txt");
+	GLuint post_process_program = compile_shader("post_vertex.txt", "post_fragment.txt");
 
 	std::vector<Model>models;
 	models.push_back(Model::load("cube-normals.obj"));
 	models.push_back(Model::load("plane.obj"));
+	//models.push_back(Model::load("sphere-normals.obj"));
 	models.push_back(Model::load("monkey-normals.obj"));
 
 	std::vector<GLuint> textures;
@@ -785,37 +786,28 @@ int main(void) {
 	//INITIALIZ COLOR BUFFER
 	GLuint fbo_color;
 	glGenTextures(1, &fbo_color);
-
-	glActiveTexture(GL_TEXTURE0);
+	glActiveTexture(GL_TEXTURE4);
 	glBindTexture(GL_TEXTURE_2D, fbo_color);
-
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
-
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_color, 0);
-
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-
-	//INITIALIZE COLOR BUFFER
-
 	GLuint fbo_depth;
-
 	glGenTextures(1, &fbo_depth);
-
-	glActiveTexture(GL_TEXTURE1);
-
+	glActiveTexture(GL_TEXTURE5);
 	glBindTexture(GL_TEXTURE_2D, fbo_depth);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, width, height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, nullptr);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, fbo_depth, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
+	
 	//Check if framebuffer is complete
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
 		std::cout << "Framebuffer incomplete!\n";
 		abort();
 	}
+	
 
 	while (!glfwWindowShouldClose(window)) {
 		camera.camera_from_world = glm::rotate(
@@ -824,14 +816,20 @@ int main(void) {
 			glm::vec3(0.0f, 1.0f, 0.0f)
 			//rotation up/down,right/left,sideways
 		);
-		//FIRST RENDER
-		//glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-		//glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
-		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		//render_scene(window, &models, shader_program, sky_shader_program, camera, &particles);
 		
-		glBindFramebuffer(GL_FRAMEBUFFER,0);
+		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 		render_scene(window, &models, shader_program, sky_shader_program, camera, &particles);
+
+		//ALL CODE FROM POST PROCESS
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		{
+			glClearColor(0.7f, 0.0f, 0.5f, 1.0f);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			glUseProgram(post_process_program);
+			GLint diffuse_map_location = glGetUniformLocation(post_process_program, "tex");
+			glUniform1i(diffuse_map_location, 4);
+			models[1].draw();
+		}
 		
 		glfwSwapBuffers(window);
 		glfwPollEvents();

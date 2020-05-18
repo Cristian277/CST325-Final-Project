@@ -24,7 +24,7 @@ GLFWwindow* initialize_glfw() {
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	// Create the window
-	GLFWwindow* window = glfwCreateWindow(640, 480, "Hello World >:)", NULL, NULL); //setting the window pointer to be width 640, height 480, and title hello world
+	GLFWwindow* window = glfwCreateWindow(740, 580, "Hello World >:)", NULL, NULL); //setting the window pointer to be width 640, height 480, and title hello world
 	if (!window) {
 		std::cout << "glfwCreateWindow(...) failed\n";
 		glfwTerminate();
@@ -601,14 +601,14 @@ void render_scene(
 			position = particle->world_from_model * position;
 
 			
-			if (position.x > 2.0) {
+			if (position.x > 0.0) {
 				particle->velocity.x = -abs(particle->velocity.x);
 			}
 			else if (position.x < 0.0) {
 				particle->velocity.x = abs(particle->velocity.x);
 			}
 
-			if (position.y > 2.0) {
+			if (position.y > 0.0) {
 				particle->velocity.y = -abs(particle->velocity.y);
 			}
 			else if (position.y < 0.0) {
@@ -656,7 +656,7 @@ void render_scene(
 		glm::value_ptr(camera.camera_from_world)
 	);
 
-	for (int i = 0; i < particles->size(); ++i) {
+	for (int i = 2; i < particles->size(); ++i) {
 
 		Particle* particle = &(*particles)[i];
 
@@ -676,14 +676,14 @@ void render_scene(
 		glm::vec4 position = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
 		position = particle->world_from_model * position;
 
-			if (position.x > 2.0) {
+			if (position.x > 0.0) {
 				particle->velocity.x = -abs(particle->velocity.x);
 			}
 			else if (position.x < 0.0) {
 				particle->velocity.x = abs(particle->velocity.x);
 			}
 
-			if (position.y > 2.0) {
+			if (position.y > 0.0) {
 				particle->velocity.y = -abs(particle->velocity.y);
 			}
 			else if (position.y < 0.0) {
@@ -705,13 +705,14 @@ int main(void) {
 	models.push_back(Model::load("cube-normals.obj"));
 	models.push_back(Model::load("plane.obj"));
 	//models.push_back(Model::load("sphere-normals.obj"));
-	models.push_back(Model::load("monkey-normals.obj"));
+	models.push_back(Model::load("1967-shelby-ford-mustang.obj"));
+	models.push_back(Model::load("plane.obj"));
 
 	std::vector<GLuint> textures;
 
-	textures.push_back(load_textures(GL_TEXTURE0, "PaintedMetal002_2K_Color.jpg"));
-	textures.push_back(load_textures(GL_TEXTURE1, "PaintedMetal002_2K_Roughness.jpg"));
-	textures.push_back(load_textures(GL_TEXTURE2, "PaintedMetal002_2K_Normal.jpg"));
+	textures.push_back(load_textures(GL_TEXTURE0, "Chip001_2K_Roughness.jpg"));
+	textures.push_back(load_textures(GL_TEXTURE1, "Chip001_2K_Color.jpg"));
+	textures.push_back(load_textures(GL_TEXTURE2, "Chip001_2K_Normal.jpg"));
 	textures.push_back(load_cubemap(GL_TEXTURE3,
 		"cubemap_sides/left.png",
 		"cubemap_sides/front.png",
@@ -738,7 +739,7 @@ int main(void) {
 		glm::vec3(0.0f, 0.003f, 0.0f)
 	));
 
-	//LAST TWO OBJECTS NOT CUBE
+	//Plane and car are the last two 
 	particles.push_back(Particle(
 		glm::scale(
 			glm::translate(
@@ -772,7 +773,7 @@ int main(void) {
 	Camera camera;
 
 	camera.camera_from_world = glm::translate(camera.camera_from_world,
-		glm::vec3(0.0f,0.0f,-30.0f));
+		glm::vec3(0.0f,-5.0f,-40.0f));
 
 	//Initialize FrameBuffer
 	GLuint fbo;
@@ -807,6 +808,8 @@ int main(void) {
 		std::cout << "Framebuffer incomplete!\n";
 		abort();
 	}
+
+	float timer = 0.0f;
 	
 
 	while (!glfwWindowShouldClose(window)) {
@@ -830,6 +833,21 @@ int main(void) {
 			glUniform1i(diffuse_map_location, 4);
 			models[1].draw();
 		}
+
+		if (timer >= 4.3f) {
+
+			glDeleteTextures(textures.size(), &textures[0]);
+			glDeleteProgram(shader_program);
+			glDeleteProgram(sky_shader_program);
+			glDeleteFramebuffers(1, &fbo);
+			for (auto i = 0; i < models.size(); ++i) {
+				models[i].cleanup();
+			}
+			glfwTerminate();
+			return 0;
+		}
+
+		timer = timer + 0.001;
 		
 		glfwSwapBuffers(window);
 		glfwPollEvents();

@@ -1,6 +1,4 @@
-
-Completed all Primary Objectives
-
-Diffuse Map
-Specular Map
-Normal Map
+Model flies into view at the start
+Using Skybox for background plus cubemap reflections although it's very subtle because of the texture
+Using Post Processing for Color Correction effect
+ 

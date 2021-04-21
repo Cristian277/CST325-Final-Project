@@ -1,2 +1,2 @@
 # CST325-Final-Project
-Final Project shows work with 3D graphics
+Shows work with 3D graphics
